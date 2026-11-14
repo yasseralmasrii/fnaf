@@ -1,15 +1,8 @@
 // MADAR: the live mission. The satellite circles the planet and the team runs it.
-import { ROLES, LESSONS, PLANETS } from './data.js';
+import { ROLES, LESSONS, PLANETS, ROLE_PLAYERS } from './data.js';
 import { createMission, step, hud, summarize, partById, ORBIT_SECONDS } from './sim.js';
 import { statCard, toast, $ } from './ui.js';
 
-// Which player does which job, for 1 to 4 players
-const ROLE_PLAYERS = {
-  1: { scientist: 1, comms: 1, engineer: 1, pilot: 1 },
-  2: { scientist: 1, pilot: 1, comms: 2, engineer: 2 },
-  3: { scientist: 1, comms: 2, engineer: 3, pilot: 3 },
-  4: { scientist: 1, comms: 2, engineer: 3, pilot: 4 },
-};
 
 export function startOps(root, config, players, onEnd) {
   const s = createMission(config);
@@ -112,7 +105,8 @@ export function startOps(root, config, players, onEnd) {
       const a = tg.lon + s.planetAngle;
       const [x, y] = pos(a, R - 10);
       const icon = tg.kind === 'fire' ? '🔥' : tg.kind === 'flood' ? '🌊' : m.targetEmoji;
-      if (tg.state === 'visible') { emoji(icon, x, y, 46 * pulse); }
+      if (tg.state === 'visible' && !tg.reach) { ctx.globalAlpha = .3; emoji(icon, x, y, 30); ctx.globalAlpha = 1; emoji('🚫', x + 22, y - 22, 20); }
+      else if (tg.state === 'visible') { emoji(icon, x, y, 46 * pulse); }
       if (tg.state === 'captured') { emoji(icon, x, y, 36); emoji('📦', x + 26, y - 26, 26); }
       if (tg.state === 'sent') { ctx.globalAlpha = .55; emoji(icon, x, y, 32); ctx.globalAlpha = 1; emoji('✅', x + 24, y - 24, 26); }
       if (tg.state === 'missed') { ctx.globalAlpha = .35; emoji(icon, x, y, 30); ctx.globalAlpha = 1; emoji('❌', x + 22, y - 22, 22); }

@@ -3,6 +3,7 @@
 
 import {
   PLANETS, MISSIONS, PARTS, CORE, ROCKETS, TRIP_FACTOR, OPS_COST_PER_ORBIT, DIFFICULTIES,
+  ORBIT_TYPES, LATE_COST_PER_MONTH,
 } from './data.js';
 
 export const ORBIT_SECONDS = 20;     // one orbit in the game lasts 20 seconds
@@ -14,6 +15,9 @@ const DISTANCE_FACTOR = { earth: 1, mars: 0.3, jupiter: 0.15 }; // far away = sl
 export function partById(id) { return PARTS.find(p => p.id === id); }
 export function missionById(id) { return MISSIONS.find(m => m.id === id); }
 export function difficultyById(id) { return DIFFICULTIES.find(d => d.id === id) || DIFFICULTIES[1]; }
+export function orbitTypeById(id) { return ORBIT_TYPES.find(o => o.id === id) || ORBIT_TYPES[0]; }
+export function orbitTypesFor(planetId) { return ORBIT_TYPES.filter(o => o.planets.includes(planetId)); }
+const BLURRY = 0.6; // science multiplier when there are no reaction wheels
 
 // Random numbers that are the same every time for the same seed (fair replays and challenge codes).
 export function makeRng(seed) {
@@ -36,20 +40,21 @@ function angleDiff(a, b) {
 
 // ---------- Orbit facts (real formulas) ----------
 
-export function orbitInfo(planetId, alt, mission) {
+export function orbitInfo(planetId, alt, mission, orbitTypeId) {
   const p = PLANETS[planetId];
+  const ot = orbitTypeById(orbitTypeId);
   const a = p.radius + alt;                                   // distance from the planet's center (km)
   const periodSec = 2 * Math.PI * Math.sqrt(a ** 3 / p.mu);   // Kepler's third law
   const horizon = Math.acos(p.radius / a);                    // how far the satellite can see (radians)
-  const eclipse = Math.asin(p.radius / a) / Math.PI;          // part of each orbit spent in shadow
+  const eclipse = (Math.asin(p.radius / a) / Math.PI) * ot.eclipse; // part of each orbit spent in shadow
   const refAlt = mission ? mission.altStart : alt;
   const quality = Math.max(0.3, Math.min(1.5, refAlt / alt)); // lower = sharper pictures
-  const viewHalf = Math.max(0.07, horizon * 0.35);            // what the camera can see
-  const stationHalf = Math.max(0.12, horizon * 0.8);          // when a ground station can see you
+  const viewHalf = Math.max(0.07, horizon * 0.35) * ot.coverage;   // what the camera can see
+  const stationHalf = Math.max(0.12, horizon * 0.8) * ot.stations;  // when a ground station can see you
   let decayOrbits = Infinity;                                 // air drag pulls low orbits down
   if (planetId === 'earth' && alt < 400) decayOrbits = Math.max(2, Math.round((alt - 200) / 30));
   if (planetId === 'mars' && alt < 250) decayOrbits = Math.max(2, Math.round((alt - 150) / 20));
-  const radiation = planetId === 'jupiter' ? Math.max(0, Math.min(1, (30000 - alt) / 25000)) : 0;
+  const radiation = planetId === 'jupiter' ? Math.max(0, Math.min(1, (30000 - alt) / 25000)) * ot.radiation : 0;
   return { periodSec, horizon, eclipse, quality, viewHalf, stationHalf, decayOrbits, radiation, swathKm: Math.round(alt * 0.7) };
 }
 
@@ -76,23 +81,28 @@ export function designTotals(partIds) {
     armor: sum('armor'),
     hasCamera: parts.some(p => p.id === 'camera' || p.id === 'hdcamera'),
     hasAntenna: parts.some(p => p.downlink),
+    hasWheels: parts.some(p => p.attitude),
+    devMonths: CORE.dev + sum('dev'),
+    instruments: parts.filter(p => p.use).length,
     count: parts.length,
   };
 }
 
-export function rocketCapacity(rocket, mission, alt) {
+export function rocketCapacity(rocket, mission, alt, orbitTypeId) {
   const tripFactor = TRIP_FACTOR[mission.planet];
   const altPenalty = 1 - 0.25 * Math.min(1, (alt - mission.altMin) / (mission.altMax - mission.altMin));
-  return Math.round(rocket.capacity * tripFactor * altPenalty);
+  return Math.round(rocket.capacity * tripFactor * altPenalty * orbitTypeById(orbitTypeId).rocket);
 }
 
 // Budget, mass and part checks. Each warning explains WHY in simple words.
-export function checkDesign({ mission, partIds, rocketId, alt, difficultyId }) {
+export function checkDesign({ mission, partIds, rocketId, alt, difficultyId, orbitType }) {
   const t = designTotals(partIds);
   const diff = difficultyById(difficultyId);
   const budget = Math.round(mission.budget * diff.budget);
   const rocket = ROCKETS.find(r => r.id === rocketId) || null;
-  const buildCost = t.cost + (rocket ? rocket.cost : 0);
+  const lateMonths = Math.max(0, t.devMonths - mission.devLimit);
+  const lateCost = lateMonths * LATE_COST_PER_MONTH;
+  const buildCost = t.cost + (rocket ? rocket.cost : 0) + lateCost;
   const opsMoney = budget - buildCost;
   const opsOrbits = Math.max(0, Math.floor(opsMoney / OPS_COST_PER_ORBIT));
   const warnings = [];
@@ -100,11 +110,14 @@ export function checkDesign({ mission, partIds, rocketId, alt, difficultyId }) {
   if (!t.hasCamera) warnings.push({ level: 'stop', text: 'No camera: your satellite cannot see the targets.' });
   if (!t.hasAntenna) warnings.push({ level: 'stop', text: 'No antenna: your data can never reach Earth.' });
   if (t.solar === 0 && t.rtg === 0) warnings.push({ level: 'stop', text: 'No power source: add a solar panel or an RTG.' });
+  if (lateMonths > 0 && mission.launchWindow) warnings.push({ level: 'stop', text: `Too slow to build: ${t.devMonths} months, but Earth and Mars only line up every 26 months. You would miss the launch window! Use fewer advanced parts (deadline ${mission.devLimit} months).` });
+  else if (lateMonths > 0) warnings.push({ level: 'warn', text: `Building takes ${t.devMonths} months, ${lateMonths} past the ${mission.devLimit}-month deadline. Each late month costs $${LATE_COST_PER_MONTH}M (the engineers still need pay). Advanced parts take longer to build.` });
+  if (!t.hasWheels && t.hasCamera) warnings.push({ level: 'warn', text: 'No reaction wheels: the satellite cannot point steadily, so pictures will be blurry (less science).' });
   if (buildCost > budget) warnings.push({ level: 'stop', text: `Over budget by $${buildCost - budget}M. Remove a part or pick a cheaper rocket.` });
   else if (opsOrbits < mission.orbits) warnings.push({ level: 'warn', text: `Money left for operations: $${opsMoney}M, enough for ${opsOrbits} of ${mission.orbits} orbits. The mission will end early!` });
 
   if (rocket) {
-    const cap = rocketCapacity(rocket, mission, alt);
+    const cap = rocketCapacity(rocket, mission, alt, orbitType);
     if (t.mass > cap) warnings.push({ level: 'stop', text: `Too heavy: ${t.mass} kg, but this rocket can carry only ${cap} kg to this orbit. Going farther needs more fuel, so the rocket carries less.` });
   }
   const p = PLANETS[mission.planet];
@@ -112,18 +125,18 @@ export function checkDesign({ mission, partIds, rocketId, alt, difficultyId }) {
   const missing = mission.bonusNeeds.filter(id => !partIds.includes(id));
   if (missing.length) warnings.push({ level: 'tip', text: mission.bonusText });
 
-  return { totals: t, budget, buildCost, opsMoney, opsOrbits, warnings, ok: !warnings.some(w => w.level === 'stop') };
+  return { totals: t, budget, buildCost, lateMonths, lateCost, opsMoney, opsOrbits, warnings, ok: !warnings.some(w => w.level === 'stop') };
 }
 
 // ---------- The live mission ----------
 
-export function createMission({ missionId, partIds, alt, rocketId, difficultyId, seed }) {
+export function createMission({ missionId, partIds, alt, rocketId, difficultyId, seed, orbitType }) {
   const mission = missionById(missionId);
   const diff = difficultyById(difficultyId);
   const rng = makeRng(seed);
   const planet = PLANETS[mission.planet];
-  const orbit = orbitInfo(mission.planet, alt, mission);
-  const check = checkDesign({ mission, partIds, rocketId, alt, difficultyId });
+  const orbit = orbitInfo(mission.planet, alt, mission, orbitType);
+  const check = checkDesign({ mission, partIds, rocketId, alt, difficultyId, orbitType });
   const t = check.totals;
   const totalTime = mission.orbits * ORBIT_SECONDS;
 
@@ -131,7 +144,9 @@ export function createMission({ missionId, partIds, alt, rocketId, difficultyId,
   const targets = [];
   for (let i = 0; i < mission.targetCount; i++) {
     const spawn = mission.targetLife ? 4 + rng() * (totalTime - mission.targetLife - 8) : 0;
-    targets.push({ id: i, lon: rng() * Math.PI * 2, spawn, life: mission.targetLife || Infinity,
+    const lat = rng(); // how far north/south (0 = middle of the planet, 1 = near a pole)
+    targets.push({ id: i, lon: rng() * Math.PI * 2, spawn, life: mission.targetLife || Infinity, lat,
+      reach: !(orbitTypeById(orbitType).id === 'equatorial' && lat > 0.65),
       kind: mission.targetType === 'disaster' ? (rng() < 0.5 ? 'fire' : 'flood') : mission.targetType,
       state: 'waiting' }); // waiting -> visible -> captured | missed
   }
@@ -150,7 +165,7 @@ export function createMission({ missionId, partIds, alt, rocketId, difficultyId,
   const parts = partIds.map((id, i) => ({ key: i, id, alive: true }));
 
   return {
-    mission, planet, orbit, diff, rng, seed, alt, rocketId, partIds: [...partIds],
+    mission, planet, orbit, diff, rng, seed, alt, rocketId, orbitType, partIds: [...partIds],
     time: 0, totalTime,
     endTime: Math.min(totalTime, orbit.decayOrbits * ORBIT_SECONDS, check.opsOrbits * ORBIT_SECONDS),
     endReason: null, ended: false,
@@ -162,7 +177,7 @@ export function createMission({ missionId, partIds, alt, rocketId, difficultyId,
     powerSave: false, flare: null, debris: null,
     satAngle: 0, planetAngle: 0, inShadow: false, overStation: false, targetInView: null,
     log: { shadowTime: 0, blackoutTime: 0, memoryLost: 0, wastedShots: 0, noPowerShots: 0, missedTargets: 0,
-      dodged: 0, debrisHits: 0, flareDamage: 0, radiationHits: 0, partsLost: [], sendAttemptsNoStation: 0, firstBlackout: null },
+      dodged: 0, debrisHits: 0, blurryShots: 0, flareDamage: 0, radiationHits: 0, partsLost: [], sendAttemptsNoStation: 0, firstBlackout: null },
     lessonsSeen: {},
   };
 }
@@ -172,7 +187,7 @@ function aliveParts(state) { return state.parts.filter(p => p.alive).map(p => pa
 
 // Which part breaks first. Parts that stick out (solar panels, antennas) get hit by debris first.
 const HIT_ORDER = {
-  debris: ['solar', 'bigsolar', 'antenna', 'hga', 'radar', 'thermal', 'battery', 'camera', 'hdcamera', 'memory', 'thruster', 'computer', 'rtg'],
+  debris: ['solar', 'bigsolar', 'antenna', 'hga', 'radar', 'thermal', 'battery', 'camera', 'hdcamera', 'memory', 'wheels', 'thruster', 'computer', 'rtg'],
   electronics: ['computer', 'thermal', 'radar', 'camera', 'hdcamera', 'antenna', 'hga'],
 };
 
@@ -228,8 +243,8 @@ export function step(state, dt, input = {}) {
     if (tg.state === 'waiting' && state.time >= tg.spawn) tg.state = 'visible';
     if (tg.state === 'visible' && state.time > tg.spawn + tg.life) { tg.state = 'missed'; state.log.missedTargets++; }
     if (tg.state === 'visible' && angleDiff(state.satAngle, tg.lon + state.planetAngle) < state.orbit.viewHalf) {
-      state.targetInView = tg;
-      lesson('target', null);
+      if (tg.reach) { state.targetInView = tg; lesson('target', null); }
+      else lesson('outOfReach', null);
     }
   }
 
@@ -251,7 +266,9 @@ export function step(state, dt, input = {}) {
       if (!tg) { state.log.wastedShots++; out.push({ kind: 'bad', text: 'Missed: no target under the satellite.' }); }
       else {
         const bonus = state.mission.bonusNeeds.some(id => extras.some(e => e.id === id)) ? 2 : 1;
-        const science = Math.round(10 * state.orbit.quality * (cam.quality || 1) * bonus);
+        const steady = parts.some(p => p.attitude);
+        if (!steady) { state.log.blurryShots++; lesson('blurry', null); }
+        const science = Math.round(10 * state.orbit.quality * (cam.quality || 1) * bonus * (steady ? 1 : BLURRY));
         const size = cam.data + extras.reduce((s, p) => s + p.data, 0);
         const used = state.packets.reduce((s, p) => s + p.left, 0);
         if (used + size > state.memoryMax) {
@@ -394,7 +411,7 @@ export function summarize(state) {
     missionId: state.mission.id, objective, sentTargets: h.sentTargets, capturedTargets: h.capturedTargets,
     targetCount: h.targetCount, science: state.sentScience, budgetLeft: h.budget, budgetStart: state.budgetStart,
     partsLost: state.log.partsLost, endReason: state.endReason, onBoard, log: state.log,
-    shadowPct: Math.round(state.orbit.eclipse * 100), alt: state.alt, seed: state.seed,
+    shadowPct: Math.round(state.orbit.eclipse * 100), alt: state.alt, seed: state.seed, orbitType: state.orbitType,
   };
 }
 
@@ -418,6 +435,13 @@ export function explain(result, config) {
   if (l.blackoutTime > 1) lines.push(`The battery was empty for ${Math.round(l.blackoutTime)} seconds. You spend ${result.shadowPct}% of each orbit in shadow, where solar panels make no power.`);
   if (l.memoryLost > 0) lines.push(`You lost ${Math.round(l.memoryLost)} data units because the memory was full. Send data more often, or add a Memory Bank.`);
   if (l.missedTargets > 0) lines.push(`${l.missedTargets} target(s) were missed. ${m.targetType === 'disaster' ? 'Disasters do not wait: react fast!' : 'Watch for targets passing under your orbit.'}`);
+  const unreachable = (config.orbitType === 'equatorial') ? createMission(config).targets.filter(t => !t.reach).length : 0;
+  if (unreachable > 0) lines.push(`${unreachable} target(s) were too far north or south: an equatorial orbit never flies over them. A polar orbit sees the whole planet.`);
+  if (l.blurryShots > 0) lines.push(`${l.blurryShots} picture(s) were blurry because there were no working reaction wheels to point the satellite. Blurry pictures give ${Math.round((1 - BLURRY) * 100)}% less science.`);
+  const chk = checkDesign({ mission: m, partIds: config.partIds, rocketId: config.rocketId, alt: config.alt, difficultyId: config.difficultyId, orbitType: config.orbitType });
+  if (chk.lateMonths > 0) lines.push(`Building took ${chk.totals.devMonths} months, ${chk.lateMonths} past the deadline. That cost $${chk.lateCost}M that could have paid for more orbits.`);
+  else lines.push(`Development took ${chk.totals.devMonths} months: on time (deadline ${m.devLimit}).`);
+  lines.push(`Your ${orbitTypeById(config.orbitType).name.toLowerCase()} orbit: ${orbitTypeById(config.orbitType).good}`);
   if (l.wastedShots > 2) lines.push(`${l.wastedShots} pictures were taken with no target under the satellite. Each wasted picture costs power.`);
   for (const p of l.partsLost) lines.push(`Your ${partById(p.id).name} was destroyed by ${p.cause} at ${p.time}s.`);
   if (l.dodged > 0) lines.push(`Great piloting: you dodged ${l.dodged} piece(s) of debris.`);
@@ -434,12 +458,14 @@ export function whatIf(config) {
     { label: 'a High-Gain Dish', partIds: [...config.partIds.filter(id => id !== 'antenna'), 'hga'] },
     { label: 'a Shield', partIds: [...config.partIds, 'shield'] },
     { label: 'a Thermal Sensor', partIds: [...config.partIds, 'thermal'] },
+    { label: 'Reaction Wheels', partIds: [...config.partIds, 'wheels'] },
+    ...orbitTypesFor(missionById(config.missionId).planet).filter(o => o.id !== config.orbitType).map(o => ({ label: `a ${o.name} orbit`, orbitType: o.id })),
     { label: 'a higher orbit (+200 km)', alt: Math.min(config.alt + 200 * (config.missionId === 'jupiter' ? 50 : 1), missionById(config.missionId).altMax) },
   ];
   let best = null;
   for (const t of tries) {
-    const cfg = { ...config, partIds: t.partIds || config.partIds, alt: t.alt || config.alt };
-    const chk = checkDesign({ mission: missionById(cfg.missionId), partIds: cfg.partIds, rocketId: cfg.rocketId, alt: cfg.alt, difficultyId: cfg.difficultyId });
+    const cfg = { ...config, partIds: t.partIds || config.partIds, alt: t.alt || config.alt, orbitType: t.orbitType || config.orbitType };
+    const chk = checkDesign({ mission: missionById(cfg.missionId), partIds: cfg.partIds, rocketId: cfg.rocketId, alt: cfg.alt, difficultyId: cfg.difficultyId, orbitType: cfg.orbitType });
     if (!chk.ok) continue;
     const r = runAutopilot(cfg);
     const gain = (r.sentTargets - base.sentTargets) * 100 + (r.science - base.science);
@@ -457,4 +483,30 @@ export function readChallengeCode(code) {
     if (!missionById(missionId)) return null;
     return { missionId, seed, difficultyId };
   } catch (e) { return null; }
+}
+
+// ---------- Team council: each role wants something different ----------
+// The team must negotiate: the budget and mass cannot make everyone happy.
+export function councilDemands(config) {
+  const m = missionById(config.missionId);
+  const chk = checkDesign({ mission: m, partIds: config.partIds, rocketId: config.rocketId, alt: config.alt, difficultyId: config.difficultyId, orbitType: config.orbitType });
+  const t = chk.totals;
+  const oi = orbitInfo(m.planet, config.alt, m, config.orbitType);
+  const has = id => config.partIds.includes(id);
+  const bonusName = m.bonusNeeds.map(id => partById(id).name).join(' or ');
+  // Engineer: enough battery to live through the shadow and still take a picture
+  const shadowSec = oi.eclipse * ORBIT_SECONDS;
+  const camUse = has('hdcamera') ? 12 : 8;
+  const powerNeed = Math.round(shadowSec * (CORE.idle + 0.5 * t.instruments) + camUse * 2);
+  const far = m.planet !== 'earth';
+  return [
+    { role: 'scientist', wants: `"I want the ${bonusName} for double science, and sharp pictures (reaction wheels)."`,
+      met: m.bonusNeeds.some(has) && t.hasWheels, why: 'More science per picture.' },
+    { role: 'comms', wants: far ? '"We are far from Earth: I need a High-Gain Dish, or our data will be stuck on board."' : '"I need a Memory Bank, so we never lose pictures when memory is full."',
+      met: far ? has('hga') : has('memory'), why: 'Data only counts when it reaches Earth.' },
+    { role: 'engineer', wants: `"The battery must survive the shadow: we need at least ${powerNeed} power stored. We have ${t.battery}."`,
+      met: t.battery >= powerNeed, why: 'No power = no science.' },
+    { role: 'pilot', wants: m.planet === 'jupiter' ? '"Radiation is deadly here: I want a Shield, and money to fly every orbit."' : '"I want a Thruster or a Shield against debris, and money to fly every orbit."',
+      met: (m.planet === 'jupiter' ? has('shield') : (has('thruster') || has('shield'))) && chk.opsOrbits >= m.orbits, why: 'A safe satellite that lasts the whole mission.' },
+  ];
 }
