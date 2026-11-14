@@ -1,0 +1,13 @@
+[
+  { "id": "solar_flare", "name": "Solar Flare",
+    "chance": 0.5, "powerCut": 0.5, "duration": 8,
+    "warning": "Solar flare! Your power drops by half for 8 seconds.",
+    "explain": "The Sun sometimes blasts out bursts of energy that disturb spacecraft electronics." },
+
+  { "id": "radiation", "name": "Radiation Zone",
+    "chance": 0.7, "damage": 5, "duration": 10,
+    "affects": ["computer", "scanner", "camera", "antenna"],
+    "computerProtects": 0.5,
+    "warning": "Radiation zone! Your electronics are taking damage.",
+    "explain": "Jupiter has very strong radiation. Real missions like NASA's Juno keep their electronics inside a protective vault." }
+]
