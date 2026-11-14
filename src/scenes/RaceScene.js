@@ -16,6 +16,8 @@ const MAX_SPEED = 1.4;        // pixels per physics step
 const FUEL_PER_SECOND = 1;    // fuel used per second of thrust
 const STEER_FUEL = 0.5;       // fuel used per second of steering up/down
 const SCAN_RANGE = 120;       // scanner shows fakes this close (pixels)
+const RELAYS = [900, 1700, 2500]; // x positions of data relays (for the Comms role)
+const RELAY_RANGE = 60;       // how close the ship must be to send data
 
 const CATEGORY_COLORS = {
   structure: 0x8a8a9a, power: 0xffd27f, propulsion: 0xff7a59,
@@ -35,6 +37,16 @@ export default class RaceScene extends Phaser.Scene {
     this.stillTime = 0;
     this.flareActive = false;
 
+    // Team roles. Roles without a player are done automatically.
+    const players = gameState.players || 1;
+    this.roles = {
+      scanner: players >= 2,   // player 2 holds S to scan
+      engineer: players >= 3,  // player 3 presses E to switch instruments on/off
+      comms: players >= 4,     // player 4 presses C at relays to send data
+    };
+    this.instrumentsOn = true;
+    this.relaysUsed = new Set();
+
     // World and camera
     this.cameras.main.setBackgroundColor(0x0b0b1e);
     this.matter.world.setBounds(0, 0, COURSE_LENGTH, 180);
@@ -47,6 +59,8 @@ export default class RaceScene extends Phaser.Scene {
     this.cameras.main.setDeadzone(0, 180); // follow left/right only
 
     this.cursors = this.input.keyboard.createCursorKeys();
+    this.keys = this.input.keyboard.addKeys('S,E,C');
+    this.buildRelays();
     this.buildHud();
     this.setupEvents();
   }
@@ -157,6 +171,17 @@ export default class RaceScene extends Phaser.Scene {
     });
   }
 
+  // Data relays: old stations along the route, like wells in the desert.
+  buildRelays() {
+    this.relayViews = RELAYS.map(x => {
+      this.add.rectangle(x, 160, 4, 20, 0x7fb2ff);
+      this.add.rectangle(x, 148, 10, 3, 0x7fb2ff);
+      const ring = this.add.circle(x, 148, 12).setStrokeStyle(1, 0x7fb2ff);
+      this.tweens.add({ targets: ring, scale: 1.6, alpha: 0, duration: 900, repeat: -1 });
+      return { x };
+    });
+  }
+
   buildHud() {
     this.add.rectangle(160, 6, 320, 12, 0x000000, 0.6).setScrollFactor(0);
     this.hudText = this.add.text(4, 2, '', textStyle(8, '#e8e4d0')).setScrollFactor(0);
@@ -166,9 +191,17 @@ export default class RaceScene extends Phaser.Scene {
     this.messageText = this.add.text(160, 90, '', textStyle(16, '#ffd27f')).setOrigin(0.5).setScrollFactor(0);
 
     // Short help at the start
-    const help = this.add.text(160, 160, 'RIGHT = THRUST   UP/DOWN = STEER', textStyle(8, '#9fe8e0'))
-      .setOrigin(0.5).setScrollFactor(0);
-    this.time.delayedCall(5000, () => help.destroy());
+    const team = this.roles.scanner;
+    const lines = [team ? 'P1: RIGHT=THRUST UP/DOWN=STEER' : 'RIGHT = THRUST   UP/DOWN = STEER'];
+    if (this.roles.scanner) lines.push('P2: HOLD S = SCAN');
+    if (this.roles.engineer) lines.push('P3: E = INSTRUMENTS ON/OFF');
+    if (this.roles.comms) lines.push('P4: C AT RELAY = SEND DATA');
+    const help = this.add.text(160, 176, lines.join('\n'), textStyle(8, '#9fe8e0', { align: 'center', lineSpacing: 2 }))
+      .setOrigin(0.5, 1).setScrollFactor(0);
+    this.time.delayedCall(6000, () => help.destroy());
+
+    // Team status line (only in team mode)
+    this.teamText = this.add.text(4, 14, '', textStyle(8, '#9fe8e0')).setScrollFactor(0);
   }
 
   // ---------- Every frame ----------
@@ -182,7 +215,14 @@ export default class RaceScene extends Phaser.Scene {
     const thrusting = wantsThrust && this.tracker.has('thruster')
       && this.tracker.useFuel(FUEL_PER_SECOND * dt, false);
 
-    this.tracker.tick(dt, { thrusting, flareActive: this.flareActive });
+    this.updateRoles();
+    this.tracker.tick(dt, {
+      thrusting,
+      flareActive: this.flareActive,
+      scannerActive: this.scannerActive,
+      instrumentsOn: this.instrumentsOn,
+      autoComms: !this.roles.comms,
+    });
     this.flame.setVisible(thrusting && Math.random() > 0.2);
 
     const v = this.hull.body.velocity;
@@ -220,6 +260,44 @@ export default class RaceScene extends Phaser.Scene {
     this.updateScanner();
     this.updateHud();
     this.checkEnd(thrusting, speed, dt);
+  }
+
+  // Read the team keys, or do the job automatically if nobody has that role.
+  updateRoles() {
+    // Scanner: hold S (player 2), or always on when solo.
+    this.scannerActive = this.roles.scanner ? this.keys.S.isDown : true;
+
+    // Engineer: press E (player 3), or switch instruments off automatically when power is low.
+    if (this.roles.engineer) {
+      if (Phaser.Input.Keyboard.JustDown(this.keys.E)) this.instrumentsOn = !this.instrumentsOn;
+    } else {
+      const h = this.tracker.hud();
+      const ratio = h.power / h.maxPower;
+      if (ratio < 0.2) this.instrumentsOn = false;
+      if (ratio > 0.5) this.instrumentsOn = true;
+    }
+
+    // Comms: press C near a relay (player 4). Without a Comms player, data is sent automatically.
+    const relay = RELAYS.find(x => Math.abs(x - this.hull.x) < RELAY_RANGE && !this.relaysUsed.has(x));
+    if (relay !== undefined && (!this.roles.comms || Phaser.Input.Keyboard.JustDown(this.keys.C))) {
+      this.relaysUsed.add(relay);
+      const sent = this.tracker.downlinkBurst();
+      this.flash(sent > 0 ? `DATA SENT +${sent}` : 'NO DATA TO SEND');
+    }
+
+    if (this.roles.scanner || this.roles.engineer || this.roles.comms) {
+      const parts = [];
+      if (this.roles.scanner) parts.push(`SCAN ${this.scannerActive ? 'ON' : 'OFF'}`);
+      if (this.roles.engineer) parts.push(`INSTR ${this.instrumentsOn ? 'ON' : 'OFF'}`);
+      if (this.roles.comms) parts.push(`DATA ${this.tracker.hud().stored}`);
+      this.teamText.setText(parts.join('  '));
+    }
+  }
+
+  // A short message in the middle of the screen.
+  flash(message) {
+    const text = this.add.text(160, 40, message, textStyle(8, '#7fb2ff')).setOrigin(0.5).setScrollFactor(0);
+    this.time.delayedCall(1200, () => text.destroy());
   }
 
   // The closest fake rock just in front of the ship, or null.
