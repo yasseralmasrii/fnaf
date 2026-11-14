@@ -2,7 +2,7 @@
 // OWNER: Member 4. Shows the Seven Stars, the "why" report, and one "what if" tip.
 
 import Phaser from 'phaser';
-import { gameState, FAKE_SHIP_DESIGN, FAKE_RACE_RESULT } from '../state.js';
+import { gameState, setLevel, FAKE_SHIP_DESIGN, FAKE_RACE_RESULT } from '../state.js';
 import { computeScore } from '../systems/scoring.js';
 import { generateReport } from '../systems/report.js';
 import { saveRun } from '../systems/leaderboard.js';
@@ -11,6 +11,7 @@ import { textStyle } from '../ui/font.js';
 
 const STAR_LABELS = ['FIN', 'TIME', 'FUEL', 'PWR', 'SCI', 'SHIP', 'SCAN'];
 const LINES_PER_PAGE = 2;
+const LAST_LEVEL = 6;
 
 export default class ReportScene extends Phaser.Scene {
   constructor() {
@@ -65,15 +66,31 @@ export default class ReportScene extends Phaser.Scene {
     if (this.lines.length > LINES_PER_PAGE) {
       this.button(284, 122, 'MORE', () => this.nextPage());
     }
-    this.button(86, 170, 'RETRY WITH CHANGES', () => {
+    this.button(44, 170, 'REDESIGN', () => {
       gameState.raceResult = null;
       gameState.savedToMajlis = false;
       this.scene.start('Hangar');
     });
-    this.button(270, 170, 'MENU', () => {
+    this.button(110, 170, 'MENU', () => {
       gameState.savedToMajlis = false;
       this.scene.start('Menu');
     });
+
+    // Only a finished mission moves you forward.
+    if (result.finished) {
+      const isLast = gameState.levelId >= LAST_LEVEL;
+      const label = isLast ? 'HOME! >' : 'NEXT MISSION >';
+      this.button(isLast ? 280 : 254, 170, label, () => {
+        gameState.raceResult = null;
+        gameState.savedToMajlis = false;
+        if (isLast) {
+          this.scene.start('Menu');
+        } else {
+          setLevel(gameState.levelId + 1);
+          this.scene.start('Briefing');
+        }
+      });
+    }
   }
 
   showPage() {
