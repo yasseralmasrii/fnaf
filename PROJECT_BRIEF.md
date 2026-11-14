@@ -14,8 +14,9 @@ The numbers below are examples only. Real numbers live in the /data JSON files.
   "capacity": { "LEO": 500, "SSO": 420, "GEO": 250 } }
 
 // 3) orbit (orbits.json)
-{ "id": "LEO", "name": "Low Route", "solarFactor": 1.0, "commsWindow": 0.3,
-  "debrisFactor": 1.5, "explain": "Fast and close, but crowded with rocks." }
+{ "id": "LEO", "name": "Low Route", "solarFactor": 0.65, "commsWindow": 0.3,
+  "lifetime": 0.4, "scienceBonus": 1.3, "debrisFactor": 1.5,
+  "explain": "Close to Earth: great for science, but crowded with rocks." }
 
 // 4) level (levels.json)
 { "id": 3, "planet": "Mars", "briefing": "Reach the Mars relay...",
