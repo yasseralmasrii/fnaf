@@ -1,5 +1,4 @@
-// src/scenes/RaceScene.js
-// OWNER: Member 3. The race: fly the ship you built to the finish line.
+
 // Movement and drawing are here. Power, fuel, science and the report data are in raceTracker.js.
 
 import Phaser from 'phaser';
