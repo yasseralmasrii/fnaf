@@ -31,4 +31,22 @@ The numbers below are examples only. Real numbers live in the /data JSON files.
   "vehicle": "medium", "orbit": "LEO",
   "totals": { "mass": 225, "powerBalance": 3, "cost": 440, "dataRate": 1, "downlink": 5, "science": 2, "storage": 60 } }
 
-//
+// 6) raceResult (Race -> Report)
+{ "finished": true, "time": 94, "fuelUsed": 31, "fuelOnFakes": 6,
+  "powerZeroAt": null, "partsLost": [{ "id": "solar_small", "t": 72 }],
+  "fakeDodged": 5, "realHit": 2, "dataDownlinked": 12, "scienceCollected": 8 }
+```
+
+## Seven Stars (score)
+1. Finished
+2. Time
+3. Fuel left
+4. Power efficiency
+5. Science
+6. Ship condition
+7. Scan accuracy
+
+## Systems functions (src/systems)
+- computeTotals(placedParts) -> totals   (resources.js)
+- getWarnings(totals, level, placedParts) -> [{ type, text }]   (warnings.js)
+- checkLaunch(design, level) -> { ok, reasons, capacity, totalCost }   (launchCheck.js)
