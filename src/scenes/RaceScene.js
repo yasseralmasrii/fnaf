@@ -39,6 +39,7 @@ export default class RaceScene extends Phaser.Scene {
 
     this.buildShip();
     this.cameras.main.startFollow(this.shipView, true, 0.1, 0.1);
+    this.cameras.main.setDeadzone(0, 180); // follow left/right only
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.buildHud();
@@ -87,11 +88,11 @@ export default class RaceScene extends Phaser.Scene {
       this.partViews.push({ id: p.id, view, hp: data.hp, ox, oy });
     }
 
-    // Heavier ships accelerate and turn slower. A gyro helps turning.
+    // Heavier ships accelerate and steer slower. A gyro helps steering.
     const mass = this.design.totals.mass || 100;
     this.accel = 1.5 / (1 + mass / 200);
     const gyroBonus = parts.some(p => p.id === 'gyro') ? 1.6 : 1;
-    this.turnSpeed = 0.035 * gyroBonus * Phaser.Math.Clamp(150 / mass, 0.5, 1.5);
+    this.steer = 2 * gyroBonus * Phaser.Math.Clamp(150 / mass, 0.5, 1.5);
   }
 
   buildHud() {
@@ -101,6 +102,11 @@ export default class RaceScene extends Phaser.Scene {
     this.add.rectangle(250, 6, 60, 6).setOrigin(0, 0.5).setStrokeStyle(1, 0xe8e4d0).setScrollFactor(0);
     this.add.text(214, 2, 'PWR', textStyle(8, '#9fe8e0')).setScrollFactor(0);
     this.messageText = this.add.text(160, 90, '', textStyle(16, '#ffd27f')).setOrigin(0.5).setScrollFactor(0);
+
+    // Short help at the start
+    const help = this.add.text(160, 160, 'RIGHT = THRUST   UP/DOWN = STEER', textStyle(8, '#9fe8e0'))
+      .setOrigin(0.5).setScrollFactor(0);
+    this.time.delayedCall(5000, () => help.destroy());
   }
 
   // ---------- Every frame ----------
@@ -109,35 +115,34 @@ export default class RaceScene extends Phaser.Scene {
     if (this.ended) return;
     const dt = delta / 1000;
 
-    // Thrust: needs a working thruster and fuel.
-    const wantsThrust = this.cursors.up.isDown;
+    // Thrust forward (RIGHT arrow): needs a working thruster and fuel.
+    const wantsThrust = this.cursors.right.isDown;
     const thrusting = wantsThrust && this.tracker.has('thruster')
       && this.tracker.useFuel(FUEL_PER_SECOND * dt, false);
 
     this.tracker.tick(dt, { thrusting });
 
-    // Turning
-    if (this.cursors.left.isDown) this.hull.rotation -= this.turnSpeed;
-    if (this.cursors.right.isDown) this.hull.rotation += this.turnSpeed;
-
-    // Speed up in the direction the ship is facing
     const v = this.hull.body.velocity;
     let vx = v.x;
     let vy = v.y;
-    if (thrusting) {
-      vx += Math.cos(this.hull.rotation) * this.accel * dt;
-      vy += Math.sin(this.hull.rotation) * this.accel * dt;
-    }
+
+    // Forward speed
+    if (thrusting) vx += this.accel * dt;
+    vx = Phaser.Math.Clamp(vx, 0, MAX_SPEED);
+
+    // Steer up and down (UP / DOWN arrows). Heavy ships steer slower, a gyro helps.
+    if (this.cursors.up.isDown) vy -= this.steer * dt;
+    else if (this.cursors.down.isDown) vy += this.steer * dt;
+    else vy *= 0.95; // slowly stop moving up/down when no key is pressed
+    vy = Phaser.Math.Clamp(vy, -1, 1);
+
     const speed = Math.hypot(vx, vy);
-    if (speed > MAX_SPEED) {
-      vx = vx / speed * MAX_SPEED;
-      vy = vy / speed * MAX_SPEED;
-    }
     this.hull.setVelocity(vx, vy);
+    this.hull.setRotation(0);
 
     // Draw the parts where the hull is
     this.shipView.setPosition(this.hull.x, this.hull.y);
-    this.shipView.setRotation(this.hull.rotation);
+    this.shipView.setRotation(vy * 0.3); // small tilt when steering
 
     this.updateHud();
     this.checkEnd(thrusting, speed, dt);
