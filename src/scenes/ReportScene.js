@@ -7,9 +7,10 @@ import { computeScore } from '../systems/scoring.js';
 import { generateReport } from '../systems/report.js';
 import { saveRun } from '../systems/leaderboard.js';
 import { encodeDesign } from '../systems/designCode.js';
+import { textStyle } from '../ui/font.js';
 
 const STAR_LABELS = ['FIN', 'TIME', 'FUEL', 'PWR', 'SCI', 'SHIP', 'SCAN'];
-const LINES_PER_PAGE = 3;
+const LINES_PER_PAGE = 2;
 
 export default class ReportScene extends Phaser.Scene {
   constructor() {
@@ -34,42 +35,42 @@ export default class ReportScene extends Phaser.Scene {
 
     // Background and title
     this.add.rectangle(160, 90, 320, 180, 0x1a1a3a);
-    this.add.text(160, 10, 'MISSION REPORT', { fontSize: '10px', color: '#ffd27f' }).setOrigin(0.5);
+    this.add.text(160, 10, 'MISSION REPORT', textStyle(16, '#ffd27f')).setOrigin(0.5);
 
     // Seven Stars
     const values = Object.values(score.values);
     values.forEach((value, i) => {
       const x = 40 + i * 40;
       const earned = value >= 0.6;
-      this.add.star(x, 30, 5, 3, 7, earned ? 0xffd27f : 0x3b3b5a);
-      this.add.text(x, 42, STAR_LABELS[i], { fontSize: '6px', color: earned ? '#ffd27f' : '#77779a' })
+      this.add.star(x, 28, 5, 3, 7, earned ? 0xffd27f : 0x3b3b5a);
+      this.add.text(x, 40, STAR_LABELS[i], textStyle(8, earned ? '#ffd27f' : '#77779a'))
         .setOrigin(0.5);
     });
-    this.add.text(160, 52, `${score.stars} / 7 stars`, { fontSize: '8px', color: '#e8e4d0' }).setOrigin(0.5);
+    this.add.text(160, 52, `${score.stars} / 7 STARS`, textStyle(8, '#e8e4d0')).setOrigin(0.5);
 
     // Report lines, shown a few at a time
     this.lines = report.lines;
     this.page = 0;
-    this.reportText = this.add.text(12, 62, '', {
-      fontSize: '7px', color: '#e8e4d0', wordWrap: { width: 296 }, lineSpacing: 2,
-    });
+    this.reportText = this.add.text(8, 62, '', textStyle(8, '#e8e4d0', {
+      wordWrap: { width: 304 }, lineSpacing: 2,
+    }));
     this.showPage();
 
     // What if tip
-    this.add.text(160, 140, report.whatIf, {
-      fontSize: '7px', color: '#9fe8e0', wordWrap: { width: 296 }, align: 'center',
-    }).setOrigin(0.5);
+    this.add.text(160, 144, report.whatIf, textStyle(8, '#9fe8e0', {
+      wordWrap: { width: 304 }, align: 'center', lineSpacing: 2,
+    })).setOrigin(0.5);
 
     // Buttons
     if (this.lines.length > LINES_PER_PAGE) {
-      this.button(280, 120, 'MORE', () => this.nextPage());
+      this.button(284, 122, 'MORE', () => this.nextPage());
     }
-    this.button(70, 166, 'RETRY WITH CHANGES', () => {
+    this.button(86, 170, 'RETRY WITH CHANGES', () => {
       gameState.raceResult = null;
       gameState.savedToMajlis = false;
       this.scene.start('Hangar');
     });
-    this.button(250, 166, 'MENU', () => {
+    this.button(270, 170, 'MENU', () => {
       gameState.savedToMajlis = false;
       this.scene.start('Menu');
     });
@@ -88,10 +89,10 @@ export default class ReportScene extends Phaser.Scene {
   }
 
   button(x, y, label, onClick) {
-    const w = label.length * 6 + 12;
+    const w = label.length * 8 + 12;
     const box = this.add.rectangle(x, y, w, 16, 0x3b3b7a).setStrokeStyle(1, 0xffd27f)
       .setInteractive({ useHandCursor: true });
-    this.add.text(x, y, label, { fontSize: '7px', color: '#ffffff' }).setOrigin(0.5);
+    this.add.text(x, y, label, textStyle(8, '#ffffff')).setOrigin(0.5);
     box.on('pointerover', () => box.setFillStyle(0x5555aa));
     box.on('pointerout', () => box.setFillStyle(0x3b3b7a));
     box.on('pointerdown', onClick);
