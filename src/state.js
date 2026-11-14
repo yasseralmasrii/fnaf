@@ -3,6 +3,7 @@
 // Hangar writes shipDesign. Race writes raceResult. Report reads both.
 
 import levelsData from "../data/levels.json";
+import difficultiesData from "../data/difficulties.json";
 
 export const SCENE_ORDER = [
   "Menu",
@@ -50,18 +51,42 @@ export const FAKE_RACE_RESULT = {
 export const gameState = {
   levelId: 1,
   level: levelsData[0],
+  difficulty: "dalil", // bedouin, dalil, rawi, or sandbox
   shipDesign: null,
   raceResult: null,
   players: 1, // team mode (2-4) comes later
 };
+
+// The chosen difficulty's settings (from difficulties.json).
+export function getDifficulty() {
+  return difficultiesData.find(d => d.id === gameState.difficulty) || difficultiesData[1];
+}
+
+// Copy a level and change its numbers to match the difficulty.
+function applyDifficulty(baseLevel) {
+  const d = getDifficulty();
+  const shimmer = Math.max(0, Math.min(1, baseLevel.fakeShimmer + d.fakeShimmerBonus));
+  return {
+    ...baseLevel,
+    budget: Math.round(baseLevel.budget * d.budgetFactor),
+    massLimit: Math.round(baseLevel.massLimit * d.massFactor),
+    fakeShimmer: shimmer,
+  };
+}
 
 // Move to a level by its id (1 to 6).
 export function setLevel(id) {
   const found = levelsData.find(l => l.id === id);
   if (found) {
     gameState.levelId = id;
-    gameState.level = found;
+    gameState.level = applyDifficulty(found);
   }
+}
+
+// Change the difficulty and update the current level's numbers.
+export function setDifficulty(id) {
+  gameState.difficulty = id;
+  setLevel(gameState.levelId);
 }
 
 // Start a fresh run. Pass { fake: true } during development to prefill data.
