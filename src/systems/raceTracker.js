@@ -42,14 +42,19 @@ export function createRaceTracker(level, design) {
 
   return {
     // Call every frame. dt = seconds since last frame.
-    // options: { thrusting: true/false, inEclipse: true/false, flareActive: true/false }
+    // options: { thrusting, inEclipse, flareActive,
+    //            scannerActive (default true), instrumentsOn (default true), autoComms (default true) }
     tick(dt, options = {}) {
       t.time += dt;
+      const instrumentsOn = options.instrumentsOn !== false;
+      t.scannerActive = options.scannerActive !== false && instrumentsOn;
 
       let made = 0;
       let used = 0;
       for (const p of alive) {
         if (p.category === "propulsion" && !options.thrusting) continue; // thrusters use power only when firing
+        if (p.category === "science" && !instrumentsOn) continue;       // engineer switched instruments off
+        if (p.id === "scanner" && !t.scannerActive) continue;           // scanner only uses power when on
         if (p.power > 0) made += p.power;
         else used += p.power; // negative
       }
@@ -63,14 +68,19 @@ export function createRaceTracker(level, design) {
 
       // Instruments and antenna only work with power.
       if (t.power > 0) {
-        const science = alive.reduce((s, p) => s + p.science, 0);
-        const dataRate = alive.reduce((s, p) => s + p.dataRate, 0);
-        const downlink = alive.reduce((s, p) => s + p.downlink, 0);
-        t.scienceCollected += science * orbit.scienceBonus * SCIENCE_SPEED * dt;
-        t.dataStored += dataRate * DATA_SPEED * dt;
-        const sent = Math.min(t.dataStored, downlink * orbit.commsWindow * DATA_SPEED * dt);
-        t.dataStored -= sent;
-        t.dataDownlinked += sent;
+        if (instrumentsOn) {
+          const science = alive.reduce((s, p) => s + p.science, 0);
+          const dataRate = alive.reduce((s, p) => s + p.dataRate, 0);
+          t.scienceCollected += science * orbit.scienceBonus * SCIENCE_SPEED * dt;
+          t.dataStored += dataRate * DATA_SPEED * dt;
+        }
+        // Without a Comms player, data is sent slowly and automatically.
+        if (options.autoComms !== false) {
+          const downlink = alive.reduce((s, p) => s + p.downlink, 0);
+          const sent = Math.min(t.dataStored, downlink * orbit.commsWindow * DATA_SPEED * dt);
+          t.dataStored -= sent;
+          t.dataDownlinked += sent;
+        }
       }
     },
 
@@ -92,8 +102,7 @@ export function createRaceTracker(level, design) {
       return true;
     },
 
-    
-        // Call when a part breaks off the ship. cause = "rock" or "radiation".
+    // Call when a part breaks off the ship. cause = "rock" or "radiation".
     losePart(id, cause = "rock") {
       const i = alive.findIndex(p => p.id === id);
       if (i >= 0) {
@@ -108,8 +117,18 @@ export function createRaceTracker(level, design) {
     // Call when the ship hits a real rock.
     realHit() { t.realHit += 1; },
 
-    // Is the scanner on? (installed, not broken, and there is power)
-    scannerOn() { return has("scanner") && t.power > 0; },
+    // Is the scanner on? (installed, not broken, switched on, and there is power)
+    scannerOn() { return has("scanner") && t.power > 0 && t.scannerActive !== false; },
+
+    // Send ALL stored data at once (when passing a relay). Needs an antenna and power.
+    // Returns how much data was sent.
+    downlinkBurst() {
+      if (!alive.some(p => p.downlink > 0) || t.power <= 0) return 0;
+      const sent = t.dataStored;
+      t.dataDownlinked += sent;
+      t.dataStored = 0;
+      return Math.round(sent);
+    },
 
     // Does the ship still have this part?
     has,
@@ -122,6 +141,7 @@ export function createRaceTracker(level, design) {
         power: Math.round(t.power),
         maxPower: t.maxPower,
         data: Math.round(t.dataDownlinked),
+        stored: Math.round(t.dataStored),
       };
     },
 
