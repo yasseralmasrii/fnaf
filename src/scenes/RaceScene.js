@@ -5,6 +5,7 @@
 import Phaser from 'phaser';
 import { gameState, FAKE_SHIP_DESIGN } from '../state.js';
 import partsData from '../../data/parts.json';
+import eventsData from '../../data/events.json';
 import { createRaceTracker } from '../systems/raceTracker.js';
 import { textStyle } from '../ui/font.js';
 
@@ -32,6 +33,7 @@ export default class RaceScene extends Phaser.Scene {
     this.tracker = createRaceTracker(this.level, this.design);
     this.ended = false;
     this.stillTime = 0;
+    this.flareActive = false;
 
     // World and camera
     this.cameras.main.setBackgroundColor(0x0b0b1e);
@@ -46,6 +48,7 @@ export default class RaceScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.buildHud();
+    this.setupEvents();
   }
 
   // ---------- Setup ----------
@@ -59,7 +62,8 @@ export default class RaceScene extends Phaser.Scene {
     // Finish line and the caravan lights
     this.add.rectangle(FINISH_X, 90, 2, 180, 0xffd27f, 0.6);
     for (let i = 0; i < 6; i++) {
-      this.add.circle(FINISH_X + 30 + i * 12, 80 + Math.sin(i) * 10, 2, 0xffd27f);
+      const light = this.add.circle(FINISH_X + 30 + i * 12, 80 + Math.sin(i) * 10, 2, 0xffd27f);
+      this.tweens.add({ targets: light, alpha: 0.3, duration: 400 + i * 80, yoyo: true, repeat: -1 });
     }
     this.add.text(FINISH_X + 20, 100, 'QAFILA', textStyle(8, '#ffd27f'));
   }
@@ -91,6 +95,10 @@ export default class RaceScene extends Phaser.Scene {
       this.shipView.add(view);
       this.partViews.push({ id: p.id, view, hp: data.hp, ox, oy, color });
     }
+
+    // A small flame behind the ship, shown while thrusting.
+    this.flame = this.add.triangle(-width / 2 - 4, 0, 0, 0, 6, -3, 6, 3, 0xff7a59).setVisible(false);
+    this.shipView.add(this.flame);
 
     // Heavier ships accelerate and steer slower. A gyro helps steering.
     const mass = this.design.totals.mass || 100;
@@ -174,7 +182,8 @@ export default class RaceScene extends Phaser.Scene {
     const thrusting = wantsThrust && this.tracker.has('thruster')
       && this.tracker.useFuel(FUEL_PER_SECOND * dt, false);
 
-    this.tracker.tick(dt, { thrusting });
+    this.tracker.tick(dt, { thrusting, flareActive: this.flareActive });
+    this.flame.setVisible(thrusting && Math.random() > 0.2);
 
     const v = this.hull.body.velocity;
     let vx = v.x;
@@ -246,15 +255,21 @@ export default class RaceScene extends Phaser.Scene {
     const shield = alive.find(p => p.id === 'shield' || p.id === 'shield_light');
     const target = shield || alive.reduce((front, p) => (p.ox > front.ox ? p : front), alive[0]);
 
-    target.hp -= 25;
+    this.damagePart(target, 25, 'rock');
+  }
+
+  // Lower a part's hp. Flash it red. Break it off if hp reaches 0.
+  damagePart(target, amount, cause) {
+    if (target.hp <= 0) return;
+    target.hp -= amount;
     target.view.setFillStyle(0xff7a7a);
     this.time.delayedCall(150, () => { if (target.hp > 0) target.view.setFillStyle(target.color); });
-    if (target.hp <= 0) this.breakPart(target);
+    if (target.hp <= 0) this.breakPart(target, cause);
   }
 
   // The part flies off the ship and floats away.
-  breakPart(partView) {
-    this.tracker.losePart(partView.id);
+  breakPart(partView, cause) {
+    this.tracker.losePart(partView.id, cause);
     const world = this.shipView.getWorldTransformMatrix().transformPoint(partView.ox, partView.oy);
     partView.view.destroy();
     const debris = this.add.rectangle(world.x, world.y, CELL - 1, CELL - 1, partView.color);
@@ -269,11 +284,60 @@ export default class RaceScene extends Phaser.Scene {
     });
   }
 
+  // ---------- Random events ----------
+
+  setupEvents() {
+    const events = this.level.events || [];
+    const flare = eventsData.find(e => e.id === 'solar_flare');
+    const radiation = eventsData.find(e => e.id === 'radiation');
+
+    if (flare && events.includes('solar_flare') && Math.random() < flare.chance) {
+      this.time.delayedCall(Phaser.Math.Between(15, 40) * 1000, () => this.startFlare(flare));
+    }
+    if (radiation && events.includes('radiation') && Math.random() < radiation.chance) {
+      this.time.delayedCall(Phaser.Math.Between(10, 30) * 1000, () => this.startRadiation(radiation));
+    }
+  }
+
+  startFlare(flare) {
+    if (this.ended) return;
+    this.flareActive = true;
+    const tint = this.add.rectangle(160, 90, 320, 180, 0xff7a59, 0.15).setScrollFactor(0);
+    const text = this.add.text(160, 24, 'SOLAR FLARE!', textStyle(16, '#ff7a7a')).setOrigin(0.5).setScrollFactor(0);
+    const sub = this.add.text(160, 40, 'POWER -50%', textStyle(8, '#ff7a7a')).setOrigin(0.5).setScrollFactor(0);
+    this.time.delayedCall(flare.duration * 1000, () => {
+      this.flareActive = false;
+      tint.destroy(); text.destroy(); sub.destroy();
+    });
+  }
+
+  startRadiation(radiation) {
+    if (this.ended) return;
+    const tint = this.add.rectangle(160, 90, 320, 180, 0xc58aff, 0.15).setScrollFactor(0);
+    const text = this.add.text(160, 24, 'RADIATION!', textStyle(16, '#c58aff')).setOrigin(0.5).setScrollFactor(0);
+    const hasComputer = this.partViews.some(p => p.id === 'computer' && p.hp > 0);
+    const damage = radiation.damage * (hasComputer ? radiation.computerProtects : 1);
+    const sub = this.add.text(160, 40, hasComputer ? 'COMPUTER PROTECTING' : 'ELECTRONICS HIT', textStyle(8, '#c58aff'))
+      .setOrigin(0.5).setScrollFactor(0);
+
+    this.time.addEvent({
+      delay: 1000,
+      repeat: radiation.duration - 1,
+      callback: () => {
+        if (this.ended) return;
+        for (const p of this.partViews) {
+          if (radiation.affects.includes(p.id) || p.id === 'camera_science') this.damagePart(p, damage, 'radiation');
+        }
+      },
+    });
+    this.time.delayedCall(radiation.duration * 1000, () => { tint.destroy(); text.destroy(); sub.destroy(); });
+  }
+
   updateHud() {
     const h = this.tracker.hud();
     this.hudText.setText(`TIME ${h.time}  FUEL ${h.fuel}`);
     const ratio = h.maxPower > 0 ? h.power / h.maxPower : 0;
-    this.powerBar.width = 60 * ratio;
+    this.powerBar.setSize(60 * ratio, 6);
     this.powerBar.setFillStyle(ratio > 0.3 ? 0x6fcf7f : 0xff7a7a);
   }
 
