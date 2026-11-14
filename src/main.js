@@ -28,4 +28,8 @@ const config = {
   ],
 };
 
-new Phaser.Game(config);
+// Wait for the pixel font to load before starting, so all text uses it.
+// If the font fails to load, start the game anyway.
+document.fonts.load('8px "Press Start 2P"')
+  .catch(() => console.warn("Pixel font did not load"))
+  .finally(() => new Phaser.Game(config));
