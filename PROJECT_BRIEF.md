@@ -35,6 +35,13 @@ The numbers below are examples only. Real numbers live in the /data JSON files.
 { "finished": true, "time": 94, "fuelUsed": 31, "fuelOnFakes": 6,
   "powerZeroAt": null, "partsLost": [{ "id": "solar_small", "t": 72 }],
   "fakeDodged": 5, "realHit": 2, "dataDownlinked": 12, "scienceCollected": 8 }
+
+// 7) event (events.json)
+{ "id": "solar_flare", "name": "Solar Flare",
+  "chance": 0.5, "powerCut": 0.5, "duration": 8,
+  "warning": "Solar flare! Your power drops by half for 8 seconds.",
+  "explain": "The Sun sometimes blasts out bursts of energy..." }
+// radiation event also has: "damage", "affects": [part ids], "computerProtects"
 ```
 
 ## Seven Stars (score)
@@ -53,3 +60,6 @@ Each score is 0 to 1. A score of 0.6 or more earns a star.
 - checkLaunch(design, level) -> { ok, reasons, capacity, totalCost }   (launchCheck.js)
 - computeScore(raceResult, level, design) -> { values, stars }   (scoring.js)
 - generateReport(design, raceResult, level) -> { lines, whatIf }   (report.js)
+- encodeDesign(design) -> "LHQ-..." code   (designCode.js)
+- decodeDesign(code) -> design, or null if the code is wrong   (designCode.js)
+- compareDesigns(designA, designB) -> ["Mass: 115 -> 140 (+25)", ...]   (designCode.js)
