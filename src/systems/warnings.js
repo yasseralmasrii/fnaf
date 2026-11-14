@@ -39,6 +39,12 @@ export function getWarnings(totals, level, placedParts) {
     }
   }
 
+  const hasThruster = placedParts.some(p => p.id === "thruster");
+  if (!hasThruster) {
+    warnings.unshift({ type: "required",
+      text: "Your ship has no thruster, so it cannot move. Add a thruster." });
+  }
+
   return warnings;
 }
 
