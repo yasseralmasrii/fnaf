@@ -29,7 +29,7 @@ export default class ReportScene extends Phaser.Scene {
 
     // Save the run to the Majlis once, only if the mission was finished.
     if (result.finished && gameState.raceResult && !gameState.savedToMajlis) {
-      saveRun({ name: 'Pilot', levelId: gameState.levelId, stars: score.stars,
+      saveRun({ name: gameState.playerName , levelId: gameState.levelId, stars: score.stars,
         time: result.time, designCode: encodeDesign(design) });
       gameState.savedToMajlis = true;
     }

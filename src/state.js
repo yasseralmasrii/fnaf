@@ -48,7 +48,19 @@ export const FAKE_RACE_RESULT = {
   scienceCollected: 8,
 };
 
+// The player's name for the Majlis, remembered in this browser.
+function loadName() {
+  try { return localStorage.getItem("lahaq_name") || "Pilot"; } catch (e) { return "Pilot"; }
+}
+
+export function setPlayerName(name) {
+  const clean = String(name || "").trim().slice(0, 12) || "Pilot";
+  gameState.playerName = clean;
+  try { localStorage.setItem("lahaq_name", clean); } catch (e) {}
+}
+
 export const gameState = {
+  playerName: loadName(),
   levelId: 1,
   level: levelsData[0],
   difficulty: "dalil", // bedouin, dalil, rawi, or sandbox
