@@ -63,3 +63,6 @@ Each score is 0 to 1. A score of 0.6 or more earns a star.
 - encodeDesign(design) -> "LHQ-..." code   (designCode.js)
 - decodeDesign(code) -> design, or null if the code is wrong   (designCode.js)
 - compareDesigns(designA, designB) -> ["Mass: 115 -> 140 (+25)", ...]   (designCode.js)
+- saveRun({ name, levelId, stars, time, designCode })   (leaderboard.js)
+- getTopRuns(levelId, howMany) -> best runs, sorted by stars then time   (leaderboard.js)
+- clearMajlis()   (leaderboard.js)
