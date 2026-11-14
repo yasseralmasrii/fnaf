@@ -30,7 +30,7 @@ export default class LaunchScene extends Phaser.Scene {
         this.design.vehicle = v.id;
         this.refresh();
       });
-      this.add.text(COLUMNS[i], 46, `${v.cost} STARS`, textStyle(8, '#e8e4d0')).setOrigin(0.5);
+      this.add.text(COLUMNS[i], 50, `${v.cost} STARS`, textStyle(8, '#e8e4d0')).setOrigin(0.5);
       return { id: v.id, box: b };
     });
 
