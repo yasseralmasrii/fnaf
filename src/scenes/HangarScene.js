@@ -44,9 +44,9 @@ export default class HangarScene extends Phaser.Scene {
     this.add.text(4, 4, `HANGAR - ${this.level.planet.toUpperCase()}`, textStyle(8, '#ffd27f'));
 
     this.listLayer = this.add.container(0, 0);
-    this.gridLayer = this.add.container(0, 0);
     this.statsLayer = this.add.container(0, 0);
     this.drawGridCells();
+    this.gridLayer = this.add.container(0, 0);
 
     this.warningText = this.add.text(4, 122, '', textStyle(8, '#ff7a7a', {
       wordWrap: { width: 312 }, lineSpacing: 2,
