@@ -18,10 +18,7 @@
     "budget": 650, "massLimit": 350, "fuel": 45,
     "realRocks": 20, "fakeRocks": 10, "fakeShimmer": 0.8,
     "sunlight": 0.43, "events": ["solar_flare"], "requiredParts": ["antenna"],
-    "verse": "خَفَتَ الضوءُ في المريخِ، فارفعْ هوائيًّا يُبلِّغُ نداءَ الفؤادِ
-    
-    
-    The light grows faint on Mars, so raise an antenna to carry the call of your heart.", "background": "bg_mars" },
+    "verse": "خَفَتَ الضوءُ في المريخِ، فارفعْ هوائيًّا يُبلِّغُ نداءَ الفؤاد", "background": "bg_mars" },
 
   { "id": 4, "planet": "Asteroid Belt",
     "briefing": "Cross the asteroid belt. Rocks are everywhere, and Sarab hides among them.",
