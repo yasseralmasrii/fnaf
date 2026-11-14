@@ -13,9 +13,8 @@ const FINISH_X = 2900;
 const CELL = 8;               // each ship part is drawn 8x8 in the race
 const MAX_SPEED = 1.4;        // pixels per physics step
 const FUEL_PER_SECOND = 1;    // fuel used per second of thrust
-
-const ROCK_COLOR = 0x7a6450;    // brown rock body
-const ROCK_OUTLINE = 0x2a2018;  // dark outline around rocks
+const STEER_FUEL = 0.5;       // fuel used per second of steering up/down
+const SCAN_RANGE = 120;       // scanner shows fakes this close (pixels)
 
 const CATEGORY_COLORS = {
   structure: 0x8a8a9a, power: 0xffd27f, propulsion: 0xff7a59,
@@ -40,10 +39,8 @@ export default class RaceScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, COURSE_LENGTH, 180);
     this.drawBackground();
 
-    // Rocks are created BEFORE the ship so the ship is drawn on top of them.
-    this.spawnRealRocks();
-
     this.buildShip();
+    this.spawnRocks();
     this.cameras.main.startFollow(this.shipView, true, 0.1, 0.1);
     this.cameras.main.setDeadzone(0, 180); // follow left/right only
 
@@ -65,35 +62,6 @@ export default class RaceScene extends Phaser.Scene {
       this.add.circle(FINISH_X + 30 + i * 12, 80 + Math.sin(i) * 10, 2, 0xffd27f);
     }
     this.add.text(FINISH_X + 20, 100, 'QAFILA', textStyle(8, '#ffd27f'));
-  }
-
-  // Step B1: real rocks. Static circles the ship can bump into.
-  spawnRealRocks() {
-    this.realRocks = [];                       // keep them in a list for the next steps
-    const count = this.level.realRocks || 0;   // how many rocks this level wants
-
-    for (let i = 0; i < count; i++) {
-      const x = Phaser.Math.Between(260, FINISH_X - 80);  // not too close to the start or the finish
-      const y = Phaser.Math.Between(20, 170);
-      const radius = Phaser.Math.Between(5, 9);
-
-      // Shadow first, so it is drawn BEHIND the rock (offset by 2 pixels)
-      const shadow = this.add.circle(x + 2, y + 2, radius, 0x000000, 0.5);
-
-      // The rock itself: brown circle with a dark outline
-      const rock = this.add.circle(x, y, radius, ROCK_COLOR);
-      rock.setStrokeStyle(1, ROCK_OUTLINE);
-
-      // Static physics body: the ship bumps into it, but the rock never moves
-      this.matter.add.gameObject(rock, {
-        shape: { type: 'circle', radius },
-        isStatic: true,
-      });
-
-      rock.isRealRock = true;   // mark it, so step B2 knows this rock is dangerous
-      rock.shadow = shadow;
-      this.realRocks.push(rock);
-    }
   }
 
   buildShip() {
@@ -118,9 +86,10 @@ export default class RaceScene extends Phaser.Scene {
       if (!data) continue;
       const ox = (p.gx - minX) * CELL - width / 2 + CELL / 2;
       const oy = (p.gy - minY) * CELL - height / 2 + CELL / 2;
-      const view = this.add.rectangle(ox, oy, CELL - 1, CELL - 1, CATEGORY_COLORS[data.category] || 0xffffff);
+      const color = CATEGORY_COLORS[data.category] || 0xffffff;
+      const view = this.add.rectangle(ox, oy, CELL - 1, CELL - 1, color);
       this.shipView.add(view);
-      this.partViews.push({ id: p.id, view, hp: data.hp, ox, oy });
+      this.partViews.push({ id: p.id, view, hp: data.hp, ox, oy, color });
     }
 
     // Heavier ships accelerate and steer slower. A gyro helps steering.
@@ -128,6 +97,56 @@ export default class RaceScene extends Phaser.Scene {
     this.accel = 1.5 / (1 + mass / 200);
     const gyroBonus = parts.some(p => p.id === 'gyro') ? 1.6 : 1;
     this.steer = 2 * gyroBonus * Phaser.Math.Clamp(150 / mass, 0.5, 1.5);
+  }
+
+  spawnRocks() {
+    const randomX = () => Phaser.Math.Between(260, FINISH_X - 80);
+    const randomY = () => Phaser.Math.Between(20, 170);
+
+    // Real rocks: solid, with a shadow. They damage the ship.
+    this.realRocks = [];
+    for (let i = 0; i < (this.level.realRocks || 0); i++) {
+      const x = randomX();
+      const y = randomY();
+      const r = Phaser.Math.Between(5, 9);
+      this.add.circle(x + 2, y + 2, r, 0x000000, 0.5); // shadow
+      const rock = this.add.circle(x, y, r, 0x7a6450).setStrokeStyle(1, 0x2a2018);
+      this.matter.add.gameObject(rock, { isStatic: true, shape: { type: 'circle', radius: r } });
+      rock.isRealRock = true;
+      this.realRocks.push(rock);
+    }
+
+    // Fake rocks (Sarab): no body, they shimmer. Less shimmer = harder to spot.
+    const shimmer = this.level.fakeShimmer ?? 1;
+    this.fakeRocks = [];
+    for (let i = 0; i < (this.level.fakeRocks || 0); i++) {
+      const x = randomX();
+      const y = randomY();
+      const r = Phaser.Math.Between(5, 9);
+      if (shimmer < 0.5) this.add.circle(x + 2, y + 2, r, 0x000000, 0.5); // good fakes even have a shadow
+      const fake = this.add.circle(x, y, r, 0x7a6450);
+      this.tweens.add({
+        targets: fake,
+        alpha: 1 - 0.7 * shimmer,
+        x: x + 2 * shimmer,
+        duration: Phaser.Math.Between(300, 600),
+        yoyo: true,
+        repeat: -1,
+      });
+      fake.counted = false;
+      this.fakeRocks.push(fake);
+    }
+
+    // When the ship touches a real rock
+    this.matter.world.on('collisionstart', (event) => {
+      for (const pair of event.pairs) {
+        const a = pair.bodyA.gameObject;
+        const b = pair.bodyB.gameObject;
+        const rock = a && a.isRealRock ? a : (b && b.isRealRock ? b : null);
+        const isShip = a === this.hull || b === this.hull;
+        if (rock && isShip) this.hitRealRock(rock);
+      }
+    });
   }
 
   buildHud() {
@@ -165,11 +184,21 @@ export default class RaceScene extends Phaser.Scene {
     if (thrusting) vx += this.accel * dt;
     vx = Phaser.Math.Clamp(vx, 0, MAX_SPEED);
 
-    // Steer up and down (UP / DOWN arrows). Heavy ships steer slower, a gyro helps.
-    if (this.cursors.up.isDown) vy -= this.steer * dt;
-    else if (this.cursors.down.isDown) vy += this.steer * dt;
+    // Steer up and down (UP / DOWN arrows). Uses a little fuel.
+    // Heavy ships steer slower, a gyro helps.
+    const fakeAhead = this.fakeAhead();
+    const wantsSteer = this.cursors.up.isDown || this.cursors.down.isDown;
+    const canSteer = wantsSteer && this.tracker.useFuel(STEER_FUEL * dt, Boolean(fakeAhead));
+    if (canSteer && this.cursors.up.isDown) vy -= this.steer * dt;
+    else if (canSteer && this.cursors.down.isDown) vy += this.steer * dt;
     else vy *= 0.95; // slowly stop moving up/down when no key is pressed
     vy = Phaser.Math.Clamp(vy, -1, 1);
+
+    // Steering away from a fake rock = fooled by Sarab (count each fake once)
+    if (canSteer && fakeAhead && !fakeAhead.counted) {
+      fakeAhead.counted = true;
+      this.tracker.fakeDodged();
+    }
 
     const speed = Math.hypot(vx, vy);
     this.hull.setVelocity(vx, vy);
@@ -179,8 +208,65 @@ export default class RaceScene extends Phaser.Scene {
     this.shipView.setPosition(this.hull.x, this.hull.y);
     this.shipView.setRotation(vy * 0.3); // small tilt when steering
 
+    this.updateScanner();
     this.updateHud();
     this.checkEnd(thrusting, speed, dt);
+  }
+
+  // The closest fake rock just in front of the ship, or null.
+  fakeAhead() {
+    let best = null;
+    for (const f of this.fakeRocks) {
+      const dx = f.x - this.hull.x;
+      const dy = Math.abs(f.y - this.hull.y);
+      if (dx > 0 && dx < 60 && dy < 30 && (!best || dx < best.x - this.hull.x)) best = f;
+    }
+    return best;
+  }
+
+  // If the scanner works, draw a turquoise ring around nearby fakes.
+  updateScanner() {
+    const on = this.tracker.scannerOn();
+    for (const f of this.fakeRocks) {
+      const near = Math.abs(f.x - this.hull.x) < SCAN_RANGE;
+      if (on && near) f.setStrokeStyle(1, 0x9fe8e0);
+      else f.setStrokeStyle();
+    }
+  }
+
+  hitRealRock(rock) {
+    if (rock.hitDone) return;
+    rock.hitDone = true;
+    this.tracker.realHit();
+    this.cameras.main.shake(120, 0.01);
+
+    // A shield takes the hit first. Otherwise the front part is hit.
+    const alive = this.partViews.filter(p => p.hp > 0);
+    if (alive.length === 0) return;
+    const shield = alive.find(p => p.id === 'shield' || p.id === 'shield_light');
+    const target = shield || alive.reduce((front, p) => (p.ox > front.ox ? p : front), alive[0]);
+
+    target.hp -= 25;
+    target.view.setFillStyle(0xff7a7a);
+    this.time.delayedCall(150, () => { if (target.hp > 0) target.view.setFillStyle(target.color); });
+    if (target.hp <= 0) this.breakPart(target);
+  }
+
+  // The part flies off the ship and floats away.
+  breakPart(partView) {
+    this.tracker.losePart(partView.id);
+    const world = this.shipView.getWorldTransformMatrix().transformPoint(partView.ox, partView.oy);
+    partView.view.destroy();
+    const debris = this.add.rectangle(world.x, world.y, CELL - 1, CELL - 1, partView.color);
+    this.tweens.add({
+      targets: debris,
+      x: world.x - 60,
+      y: world.y + Phaser.Math.Between(-40, 40),
+      angle: 360,
+      alpha: 0,
+      duration: 1500,
+      onComplete: () => debris.destroy(),
+    });
   }
 
   updateHud() {
