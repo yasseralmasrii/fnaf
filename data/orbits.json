@@ -1,0 +1,16 @@
+[
+  { "id": "LEO", "name": "Low Route",
+    "solarFactor": 0.65, "commsWindow": 0.3, "lifetime": 0.4,
+    "scienceBonus": 1.3, "debrisFactor": 1.5,
+    "explain": "Close to Earth: great for science, but crowded with rocks, often in shadow, and short-lived." },
+
+  { "id": "SSO", "name": "Sun Route",
+    "solarFactor": 1.0, "commsWindow": 0.4, "lifetime": 0.7,
+    "scienceBonus": 1.2, "debrisFactor": 1.2,
+    "explain": "Follows the Sun: almost always in sunlight, so power is strong." },
+
+  { "id": "GEO", "name": "High Route",
+    "solarFactor": 0.95, "commsWindow": 1.0, "lifetime": 1.0,
+    "scienceBonus": 0.7, "debrisFactor": 0.6,
+    "explain": "Far and calm: always in contact with Earth and lasts long, but too far for good science and hard to reach." }
+]
