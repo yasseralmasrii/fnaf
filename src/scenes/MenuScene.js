@@ -31,11 +31,12 @@ export default class MenuScene extends Phaser.Scene {
       wordWrap: { width: 300 }, align: 'center', lineSpacing: 2,
     })).setOrigin(0.5);
 
-    this.button(110, 156, 'START >', () => {
+      this.button(110, 156, 'START >', () => {
       resetRun();
       setLevel(1);
       this.scene.start('Briefing');
     });
+    this.button(214, 156, 'MAJLIS', () => this.scene.start('Majlis'));
 
     this.refresh();
   }
