@@ -1,6 +1,6 @@
 // src/systems/warnings.js
 // Checks the ship design and explains every problem in simple words.
-
+import vehiclesData from "../../data/vehicles.json";
 export function getWarnings(totals, level, placedParts) {
   const warnings = [];
 
@@ -39,6 +39,12 @@ export function getWarnings(totals, level, placedParts) {
     }
   }
 
+    const cheapestRocket = Math.min(...vehiclesData.map(v => v.cost));
+  if (totals.cost <= level.budget && totals.cost + cheapestRocket > level.budget) {
+    warnings.push({ type: "cost",
+      text: `Leave at least ${cheapestRocket} stars for a rocket. Ship (${totals.cost}) + cheapest rocket (${cheapestRocket}) is more than your budget (${level.budget}).` });
+  }
+  
   const hasThruster = placedParts.some(p => p.id === "thruster");
   if (!hasThruster) {
     warnings.unshift({ type: "required",
