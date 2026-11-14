@@ -6,6 +6,7 @@ import HangarScene from "./scenes/HangarScene.js";
 import LaunchScene from "./scenes/LaunchScene.js";
 import RaceScene from "./scenes/RaceScene.js";
 import ReportScene from "./scenes/ReportScene.js";
+import MajlisScene from "./scenes/MajlisScene.js";
 
 // Pick the biggest WHOLE-number zoom that fits the window, counted in real screen pixels.
 // A whole number keeps every game pixel the same size, so pixel art and text stay sharp.
@@ -33,6 +34,7 @@ const config = {
     LaunchScene,
     RaceScene,
     ReportScene,
+    MajlisScene,
   ],
 };
 
