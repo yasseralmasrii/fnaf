@@ -92,12 +92,13 @@ export function createRaceTracker(level, design) {
       return true;
     },
 
-    // Call when a part breaks off the ship.
-    losePart(id) {
+    
+        // Call when a part breaks off the ship. cause = "rock" or "radiation".
+    losePart(id, cause = "rock") {
       const i = alive.findIndex(p => p.id === id);
       if (i >= 0) {
         alive.splice(i, 1);
-        t.partsLost.push({ id, t: Math.round(t.time) });
+        t.partsLost.push({ id, t: Math.round(t.time), cause });
       }
     },
 
