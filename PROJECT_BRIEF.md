@@ -5,7 +5,7 @@ The numbers below are examples only. Real numbers live in the /data JSON files.
 
 ```js
 // 1) part (parts.json)
-{ "id": "solar_small", "name": "Solar Panel", "category": "power",
+{ "id": "solar_small", "name": "Solar Panel", "category": "power", "tier": "basic",
   "mass": 15, "power": 5, "cost": 40, "dataRate": 0, "downlink": 0, "science": 0,
   "storage": 0, "hp": 15, "sprite": "part_solar", "unlockLevel": 1 }
 // dataRate = data the part makes (instruments). downlink = data the part can send (antenna).
