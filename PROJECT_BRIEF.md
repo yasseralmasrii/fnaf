@@ -52,3 +52,4 @@ Each score is 0 to 1. A score of 0.6 or more earns a star.
 - getWarnings(totals, level, placedParts) -> [{ type, text }]   (warnings.js)
 - checkLaunch(design, level) -> { ok, reasons, capacity, totalCost }   (launchCheck.js)
 - computeScore(raceResult, level, design) -> { values, stars }   (scoring.js)
+- generateReport(design, raceResult, level) -> { lines, whatIf }   (report.js)
