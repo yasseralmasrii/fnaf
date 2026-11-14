@@ -38,15 +38,17 @@ The numbers below are examples only. Real numbers live in the /data JSON files.
 ```
 
 ## Seven Stars (score)
-1. Finished
-2. Time
-3. Fuel left
-4. Power efficiency
-5. Science
-6. Ship condition
-7. Scan accuracy
+Each score is 0 to 1. A score of 0.6 or more earns a star.
+1. finished
+2. time
+3. fuelLeft
+4. power
+5. science
+6. shipCondition
+7. scanAccuracy
 
 ## Systems functions (src/systems)
 - computeTotals(placedParts) -> totals   (resources.js)
 - getWarnings(totals, level, placedParts) -> [{ type, text }]   (warnings.js)
 - checkLaunch(design, level) -> { ok, reasons, capacity, totalCost }   (launchCheck.js)
+- computeScore(raceResult, level, design) -> { values, stars }   (scoring.js)
