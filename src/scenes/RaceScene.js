@@ -14,6 +14,9 @@ const CELL = 8;               // each ship part is drawn 8x8 in the race
 const MAX_SPEED = 1.4;        // pixels per physics step
 const FUEL_PER_SECOND = 1;    // fuel used per second of thrust
 
+const ROCK_COLOR = 0x7a6450;    // brown rock body
+const ROCK_OUTLINE = 0x2a2018;  // dark outline around rocks
+
 const CATEGORY_COLORS = {
   structure: 0x8a8a9a, power: 0xffd27f, propulsion: 0xff7a59,
   control: 0x9fe8e0, comms: 0x7fb2ff, science: 0xc58aff, defense: 0x6fcf7f,
@@ -37,6 +40,9 @@ export default class RaceScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, COURSE_LENGTH, 180);
     this.drawBackground();
 
+    // Rocks are created BEFORE the ship so the ship is drawn on top of them.
+    this.spawnRealRocks();
+
     this.buildShip();
     this.cameras.main.startFollow(this.shipView, true, 0.1, 0.1);
     this.cameras.main.setDeadzone(0, 180); // follow left/right only
@@ -59,6 +65,35 @@ export default class RaceScene extends Phaser.Scene {
       this.add.circle(FINISH_X + 30 + i * 12, 80 + Math.sin(i) * 10, 2, 0xffd27f);
     }
     this.add.text(FINISH_X + 20, 100, 'QAFILA', textStyle(8, '#ffd27f'));
+  }
+
+  // Step B1: real rocks. Static circles the ship can bump into.
+  spawnRealRocks() {
+    this.realRocks = [];                       // keep them in a list for the next steps
+    const count = this.level.realRocks || 0;   // how many rocks this level wants
+
+    for (let i = 0; i < count; i++) {
+      const x = Phaser.Math.Between(260, FINISH_X - 80);  // not too close to the start or the finish
+      const y = Phaser.Math.Between(20, 170);
+      const radius = Phaser.Math.Between(5, 9);
+
+      // Shadow first, so it is drawn BEHIND the rock (offset by 2 pixels)
+      const shadow = this.add.circle(x + 2, y + 2, radius, 0x000000, 0.5);
+
+      // The rock itself: brown circle with a dark outline
+      const rock = this.add.circle(x, y, radius, ROCK_COLOR);
+      rock.setStrokeStyle(1, ROCK_OUTLINE);
+
+      // Static physics body: the ship bumps into it, but the rock never moves
+      this.matter.add.gameObject(rock, {
+        shape: { type: 'circle', radius },
+        isStatic: true,
+      });
+
+      rock.isRealRock = true;   // mark it, so step B2 knows this rock is dangerous
+      rock.shadow = shadow;
+      this.realRocks.push(rock);
+    }
   }
 
   buildShip() {
