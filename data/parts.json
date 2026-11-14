@@ -1,41 +1,57 @@
 [
-  { "id": "frame_basic", "name": "Frame", "category": "structure",
+  { "id": "frame_basic", "name": "Frame", "category": "structure", "tier": "basic",
     "mass": 40, "power": 0, "cost": 30, "dataRate": 0, "downlink": 0, "science": 0,
     "storage": 0, "hp": 60, "sprite": "part_frame", "unlockLevel": 1 },
 
-  { "id": "solar_small", "name": "Solar Panel", "category": "power",
+  { "id": "solar_small", "name": "Solar Panel", "category": "power", "tier": "basic",
     "mass": 15, "power": 5, "cost": 40, "dataRate": 0, "downlink": 0, "science": 0,
     "storage": 0, "hp": 15, "sprite": "part_solar", "unlockLevel": 1 },
 
-  { "id": "battery", "name": "Battery", "category": "power",
+  { "id": "battery", "name": "Battery", "category": "power", "tier": "basic",
     "mass": 25, "power": 0, "cost": 40, "dataRate": 0, "downlink": 0, "science": 0,
     "storage": 60, "hp": 30, "sprite": "part_battery", "unlockLevel": 1 },
 
-  { "id": "thruster", "name": "Thruster", "category": "propulsion",
+  { "id": "thruster", "name": "Thruster", "category": "propulsion", "tier": "basic",
     "mass": 60, "power": -3, "cost": 90, "dataRate": 0, "downlink": 0, "science": 0,
     "storage": 0, "hp": 40, "sprite": "part_thruster", "unlockLevel": 1 },
 
-  { "id": "gyro", "name": "Gyro", "category": "control",
+  { "id": "gyro", "name": "Gyro", "category": "control", "tier": "basic",
     "mass": 15, "power": -1, "cost": 40, "dataRate": 0, "downlink": 0, "science": 0,
     "storage": 0, "hp": 25, "sprite": "part_gyro", "unlockLevel": 1 },
 
-  { "id": "antenna", "name": "Antenna", "category": "comms",
+  { "id": "antenna", "name": "Antenna", "category": "comms", "tier": "basic",
     "mass": 10, "power": -1, "cost": 50, "dataRate": 0, "downlink": 5, "science": 0,
     "storage": 0, "hp": 15, "sprite": "part_antenna", "unlockLevel": 2 },
 
-  { "id": "computer", "name": "Computer", "category": "control",
+  { "id": "computer", "name": "Computer", "category": "control", "tier": "basic",
     "mass": 15, "power": -1, "cost": 70, "dataRate": 0, "downlink": 0, "science": 0,
     "storage": 0, "hp": 25, "sprite": "part_computer", "unlockLevel": 2 },
 
-  { "id": "scanner", "name": "Scanner", "category": "science",
+  { "id": "scanner", "name": "Scanner", "category": "science", "tier": "basic",
     "mass": 20, "power": -3, "cost": 120, "dataRate": 1, "downlink": 0, "science": 2,
     "storage": 0, "hp": 20, "sprite": "part_scanner", "unlockLevel": 2 },
 
-  { "id": "camera", "name": "Camera", "category": "science",
+  { "id": "camera", "name": "Camera", "category": "science", "tier": "basic",
     "mass": 20, "power": -2, "cost": 80, "dataRate": 4, "downlink": 0, "science": 5,
     "storage": 0, "hp": 20, "sprite": "part_camera", "unlockLevel": 3 },
 
-  { "id": "shield", "name": "Shield", "category": "defense",
+  { "id": "shield", "name": "Shield", "category": "defense", "tier": "basic",
     "mass": 50, "power": 0, "cost": 60, "dataRate": 0, "downlink": 0, "science": 0,
-    "storage": 0, "hp": 100, "sprite": "part_shield", "unlockLevel": 4 }
+    "storage": 0, "hp": 100, "sprite": "part_shield", "unlockLevel": 4 },
+
+  { "id": "solar_advanced", "name": "Advanced Solar Panel", "category": "power", "tier": "advanced",
+    "mass": 10, "power": 8, "cost": 90, "dataRate": 0, "downlink": 0, "science": 0,
+    "storage": 0, "hp": 20, "sprite": "part_solar_adv", "unlockLevel": 3 },
+
+  { "id": "battery_advanced", "name": "Advanced Battery", "category": "power", "tier": "advanced",
+    "mass": 15, "power": 0, "cost": 90, "dataRate": 0, "downlink": 0, "science": 0,
+    "storage": 100, "hp": 30, "sprite": "part_battery_adv", "unlockLevel": 4 },
+
+  { "id": "shield_light", "name": "Light Shield", "category": "defense", "tier": "advanced",
+    "mass": 30, "power": 0, "cost": 110, "dataRate": 0, "downlink": 0, "science": 0,
+    "storage": 0, "hp": 70, "sprite": "part_shield_light", "unlockLevel": 4 },
+
+  { "id": "camera_science", "name": "Science Camera", "category": "science", "tier": "advanced",
+    "mass": 25, "power": -4, "cost": 140, "dataRate": 7, "downlink": 0, "science": 9,
+    "storage": 0, "hp": 20, "sprite": "part_camera_sci", "unlockLevel": 5 }
 ]
