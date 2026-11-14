@@ -57,13 +57,19 @@ export function generateReport(design, result, level) {
   }
 
   // 4) Lost parts
-  for (const lost of result.partsLost) {
-    lines.push(`You lost your ${partName(lost.id)} at ${timeText(lost.t)} after hitting a real rock.`);
+    for (const lost of result.partsLost) {
+    const why = lost.cause === "radiation" ? "to radiation" : "after hitting a real rock";
+    lines.push(`You lost your ${partName(lost.id)} at ${timeText(lost.t)} ${why}.`);
   }
-  if (result.partsLost.length > 0 && !hasPart(design, "shield", "shield_light")) {
+  const lostToRocks = result.partsLost.some(p => p.cause !== "radiation");
+  const lostToRadiation = result.partsLost.some(p => p.cause === "radiation");
+  if (lostToRocks && !hasPart(design, "shield", "shield_light")) {
     tips.push("A shield protects your ship from real rocks, but it is heavy. Try it if you have mass to spare.");
   }
-
+  if (lostToRadiation && !hasPart(design, "computer")) {
+    tips.push("A computer cuts radiation damage in half. Real Jupiter missions protect their electronics too.");
+  }
+  
   // 5) Science
   if (result.scienceCollected === 0 && !hasPart(design, "camera", "camera_science")) {
     lines.push("You collected no science. Instruments like the camera collect science.");
