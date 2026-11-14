@@ -6,7 +6,7 @@ The numbers below are examples only. Real numbers live in the /data JSON files.
 ```js
 // 1) part (parts.json)
 { "id": "solar_small", "name": "Small Solar Panel", "category": "power",
-  "mass": 8, "power": 4, "cost": 30, "dataRate": 0, "science": 0,
+  "mass": 8, "power": 4, "cost": 30, "dataRate": 0, "downlink": 0, "science": 0,
   "storage": 0, "hp": 20, "sprite": "part_solar_small", "unlockLevel": 1 }
 
 // 2) vehicle (vehicles.json)
