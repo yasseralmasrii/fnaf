@@ -8,6 +8,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
+html { background: var(--bg1); }
 body {
   font-family: "Segoe UI Rounded", "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
   color: #fff;
@@ -65,6 +66,12 @@ h1, h2, h3 { margin: 0; }
 .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 .toggle { padding: 8px 14px; border-radius: 12px; border: 2px solid rgba(255,255,255,.25); background: transparent; color: #fff; font-weight: 800; cursor: pointer; font-family: inherit; }
 .toggle.on { background: #fff; color: var(--ink); border-color: #fff; }
+/* Toggles and small text inside white cards */
+.card:not(.dark) .toggle { color: var(--ink); border-color: #cbd5e1; background: #f8fafc; }
+.card:not(.dark) .toggle.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.card.dark .card:not(.dark) .small { color: var(--muted); }
+.vote-go.on { background: #16a34a !important; border-color: #16a34a !important; }
+.vote-nogo.on { background: #dc2626 !important; border-color: #dc2626 !important; }
 input[type=text] { font-family: inherit; font-size: 16px; padding: 10px 14px; border-radius: 12px; border: 0; width: 220px; }
 input[type=range] { width: 100%; accent-color: var(--power); }
 
