@@ -1,0 +1,43 @@
+[
+  { "id": 1, "planet": "Earth Orbit",
+    "briefing": "Learn to fly. Reach the first relay above Earth.",
+    "budget": 400, "massLimit": 250, "fuel": 60,
+    "realRocks": 5, "fakeRocks": 0, "fakeShimmer": 1.0,
+    "sunlight": 1.0, "events": [], "requiredParts": [],
+    "verse": "", "background": "bg_earth" },
+
+  { "id": 2, "planet": "Moon",
+    "briefing": "The Qafila left the Moon dock. Follow its trail. Watch out: some rocks may not be real.",
+    "budget": 550, "massLimit": 300, "fuel": 50,
+    "realRocks": 10, "fakeRocks": 4, "fakeShimmer": 1.0,
+    "sunlight": 1.0, "events": [], "requiredParts": [],
+    "verse": "", "background": "bg_moon" },
+
+  { "id": 3, "planet": "Mars",
+    "briefing": "The Qafila passed Mars 6 hours ago. Reach the Mars relay and downlink your position. Sunlight here is weaker.",
+    "budget": 650, "massLimit": 350, "fuel": 45,
+    "realRocks": 20, "fakeRocks": 10, "fakeShimmer": 0.8,
+    "sunlight": 0.43, "events": ["solar_flare"], "requiredParts": ["antenna"],
+    "verse": "", "background": "bg_mars" },
+
+  { "id": 4, "planet": "Asteroid Belt",
+    "briefing": "Cross the asteroid belt. Rocks are everywhere, and Sarab hides among them.",
+    "budget": 750, "massLimit": 400, "fuel": 40,
+    "realRocks": 35, "fakeRocks": 20, "fakeShimmer": 0.6,
+    "sunlight": 0.14, "events": ["solar_flare"], "requiredParts": [],
+    "verse": "", "background": "bg_belt" },
+
+  { "id": 5, "planet": "Jupiter",
+    "briefing": "Pass Jupiter. The Sun is too weak for solar panels, and radiation damages electronics.",
+    "budget": 850, "massLimit": 450, "fuel": 35,
+    "realRocks": 25, "fakeRocks": 20, "fakeShimmer": 0.3,
+    "sunlight": 0.04, "events": ["radiation"], "requiredParts": [],
+    "verse": "", "background": "bg_jupiter" },
+
+  { "id": 6, "planet": "Edge of the System",
+    "briefing": "The Qafila lights are ahead. Send your signal so they can bring you home.",
+    "budget": 950, "massLimit": 500, "fuel": 30,
+    "realRocks": 30, "fakeRocks": 30, "fakeShimmer": 0.2,
+    "sunlight": 0.01, "events": ["solar_flare", "radiation"], "requiredParts": ["antenna"],
+    "verse": "", "background": "bg_edge" }
+]
