@@ -2,6 +2,9 @@
 // Everyone imports { gameState } and reads/writes only their own slice.
 // Hangar writes shipDesign. Race writes raceResult. Report reads both.
 
+import levelsData from "../data/levels.json";
+import difficultiesData from "../data/difficulties.json";
+
 export const SCENE_ORDER = [
   "Menu",
   "Briefing",
@@ -11,26 +14,25 @@ export const SCENE_ORDER = [
   "Report",
 ];
 
-// Fallback level until Member 4's levels.json lands.
-export const STUB_LEVEL = {
-  id: 1,
-  planet: "Mars",
-  briefing: "Stub: reach the caravan.",
-  budget: 500,
-  massLimit: 400,
-  fuel: 40,
-  realRocks: 25,
-  fakeRocks: 10,
-  verse: "...",
-  background: "bg_mars",
-};
+// Old fallback level. Kept so nothing that imports it breaks. Real levels come from levels.json.
+export const STUB_LEVEL = levelsData[0];
 
 // Fake data so every teammate can test without waiting on others.
+// This is the Mars test ship: mass 225, power +3, cost 440.
 export const FAKE_SHIP_DESIGN = {
-  parts: [{ id: "frame_basic", gx: 0, gy: 0 }],
+  parts: [
+    { id: "frame_basic", gx: 0, gy: 0 },
+    { id: "frame_basic", gx: 1, gy: 0 },
+    { id: "solar_small", gx: 0, gy: 1 },
+    { id: "solar_small", gx: 1, gy: 1 },
+    { id: "battery", gx: 2, gy: 0 },
+    { id: "thruster", gx: 3, gy: 0 },
+    { id: "scanner", gx: 2, gy: 1 },
+    { id: "antenna", gx: 3, gy: 1 },
+  ],
   vehicle: "medium",
   orbit: "LEO",
-  totals: { mass: 380, powerBalance: 2, cost: 460, dataRate: 3, science: 5 },
+  totals: { mass: 225, powerBalance: 3, cost: 440, dataRate: 1, downlink: 5, science: 2, storage: 60 },
 };
 
 export const FAKE_RACE_RESULT = {
@@ -48,11 +50,44 @@ export const FAKE_RACE_RESULT = {
 
 export const gameState = {
   levelId: 1,
-  level: STUB_LEVEL,
+  level: levelsData[0],
+  difficulty: "dalil", // bedouin, dalil, rawi, or sandbox
   shipDesign: null,
   raceResult: null,
   players: 1, // team mode (2-4) comes later
 };
+
+// The chosen difficulty's settings (from difficulties.json).
+export function getDifficulty() {
+  return difficultiesData.find(d => d.id === gameState.difficulty) || difficultiesData[1];
+}
+
+// Copy a level and change its numbers to match the difficulty.
+function applyDifficulty(baseLevel) {
+  const d = getDifficulty();
+  const shimmer = Math.max(0, Math.min(1, baseLevel.fakeShimmer + d.fakeShimmerBonus));
+  return {
+    ...baseLevel,
+    budget: Math.round(baseLevel.budget * d.budgetFactor),
+    massLimit: Math.round(baseLevel.massLimit * d.massFactor),
+    fakeShimmer: shimmer,
+  };
+}
+
+// Move to a level by its id (1 to 6).
+export function setLevel(id) {
+  const found = levelsData.find(l => l.id === id);
+  if (found) {
+    gameState.levelId = id;
+    gameState.level = applyDifficulty(found);
+  }
+}
+
+// Change the difficulty and update the current level's numbers.
+export function setDifficulty(id) {
+  gameState.difficulty = id;
+  setLevel(gameState.levelId);
+}
 
 // Start a fresh run. Pass { fake: true } during development to prefill data.
 export function resetRun({ fake = false } = {}) {

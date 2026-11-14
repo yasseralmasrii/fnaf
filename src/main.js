@@ -6,6 +6,15 @@ import HangarScene from "./scenes/HangarScene.js";
 import LaunchScene from "./scenes/LaunchScene.js";
 import RaceScene from "./scenes/RaceScene.js";
 import ReportScene from "./scenes/ReportScene.js";
+import MajlisScene from "./scenes/MajlisScene.js";
+
+// Pick the biggest WHOLE-number zoom that fits the window, counted in real screen pixels.
+// A whole number keeps every game pixel the same size, so pixel art and text stay sharp.
+function pickZoom() {
+  const dpr = window.devicePixelRatio || 1;
+  const fit = Math.min(window.innerWidth * dpr / 320, window.innerHeight * dpr / 180);
+  return Math.max(1, Math.floor(fit)) / dpr;
+}
 
 const config = {
   type: Phaser.AUTO,
@@ -15,7 +24,7 @@ const config = {
   backgroundColor: "#0b0b1e",
   pixelArt: true,
   roundPixels: true,
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scale: { mode: Phaser.Scale.NONE, zoom: pickZoom(), autoCenter: Phaser.Scale.CENTER_BOTH },
   physics: { default: "matter", matter: { gravity: { y: 0 }, debug: false } },
   scene: [
     BootScene,
@@ -25,7 +34,15 @@ const config = {
     LaunchScene,
     RaceScene,
     ReportScene,
+    MajlisScene,
   ],
 };
 
-new Phaser.Game(config);
+// Wait for the pixel font to load before starting, so all text uses it.
+// If the font fails to load, start the game anyway.
+document.fonts.load('8px "Press Start 2P"')
+  .catch(() => console.warn("Pixel font did not load"))
+  .finally(() => {
+    const game = new Phaser.Game(config);
+    window.addEventListener('resize', () => game.scale.setZoom(pickZoom()));
+  });

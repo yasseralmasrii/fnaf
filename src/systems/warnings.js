@@ -1,6 +1,6 @@
 // src/systems/warnings.js
 // Checks the ship design and explains every problem in simple words.
-
+import vehiclesData from "../../data/vehicles.json";
 export function getWarnings(totals, level, placedParts) {
   const warnings = [];
 
@@ -17,8 +17,13 @@ export function getWarnings(totals, level, placedParts) {
   }
 
   if (totals.powerBalance < 0) {
-    warnings.push({ type: "power",
-      text: `Power is ${totals.powerBalance}. Your parts use more power than you make. Add a solar panel.` });
+    if (level.sunlight < 0.5) {
+      warnings.push({ type: "power",
+        text: `Power is ${totals.powerBalance}. Sunlight here is only ${Math.round(level.sunlight * 100)}% of Earth's, so solar panels make little power. Add batteries.` });
+    } else {
+      warnings.push({ type: "power",
+        text: `Power is ${totals.powerBalance}. Your parts use more power than you make. Add a solar panel.` });
+    }
   }
 
   if (totals.dataRate > totals.downlink) {
@@ -34,9 +39,20 @@ export function getWarnings(totals, level, placedParts) {
     }
   }
 
+    const cheapestRocket = Math.min(...vehiclesData.map(v => v.cost));
+  if (totals.cost <= level.budget && totals.cost + cheapestRocket > level.budget) {
+    warnings.push({ type: "cost",
+      text: `Leave at least ${cheapestRocket} stars for a rocket. Ship (${totals.cost}) + cheapest rocket (${cheapestRocket}) is more than your budget (${level.budget}).` });
+  }
+  
+  const hasThruster = placedParts.some(p => p.id === "thruster");
+  if (!hasThruster) {
+    warnings.unshift({ type: "required",
+      text: "Your ship has no thruster, so it cannot move. Add a thruster." });
+  }
+
   return warnings;
 }
 
-// Tests (Mars level: budget 650, massLimit 350, needs antenna):
-// Good ship (mass 225, power +3, cost 440, has antenna) -> [] (no warnings)
-// Bad ship (mass 380, power -2, cost 700, no antenna) -> 5 warnings, first one: "Too heavy by 30 kg..."
+// Tests:
+// Jupiter ship with power -6.6 -> "Power is -6.6. Sunlight here is only 4% of Earth's... Add batteries."

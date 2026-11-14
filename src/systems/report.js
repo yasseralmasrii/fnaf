@@ -14,8 +14,9 @@ function partName(id) {
   return part ? part.name : id;
 }
 
-function hasPart(design, id) {
-  return design.parts.some(p => p.id === id);
+// Checks if the ship has ANY of the given parts.
+function hasPart(design, ...ids) {
+  return design.parts.some(p => ids.includes(p.id));
 }
 
 export function generateReport(design, result, level) {
@@ -59,12 +60,12 @@ export function generateReport(design, result, level) {
   for (const lost of result.partsLost) {
     lines.push(`You lost your ${partName(lost.id)} at ${timeText(lost.t)} after hitting a real rock.`);
   }
-  if (result.partsLost.length > 0 && !hasPart(design, "shield")) {
+  if (result.partsLost.length > 0 && !hasPart(design, "shield", "shield_light")) {
     tips.push("A shield protects your ship from real rocks, but it is heavy. Try it if you have mass to spare.");
   }
 
   // 5) Science
-  if (result.scienceCollected === 0 && !hasPart(design, "camera")) {
+  if (result.scienceCollected === 0 && !hasPart(design, "camera", "camera_science")) {
     lines.push("You collected no science. Instruments like the camera collect science.");
     tips.push("Add a camera to collect science, but remember it uses power and makes data your antenna must send.");
   }
@@ -74,7 +75,3 @@ export function generateReport(design, result, level) {
 
   return { lines, whatIf };
 }
-
-// Tests (Mars):
-// Bad run (5 fakes dodged, power out at 80s, lost solar panel at 72s, no camera) -> 6 lines, whatIf: "Add a scanner..."
-// Good run (scanner, no fakes dodged, power never out) -> 3 lines, whatIf: "try a lighter ship..."
