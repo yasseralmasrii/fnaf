@@ -3,7 +3,7 @@
 // Live numbers on the right, and a warning that explains WHY at the bottom.
 
 import Phaser from 'phaser';
-import { gameState } from '../state.js';
+import { gameState, getDifficulty } from '../state.js';
 import partsData from '../../data/parts.json';
 import { computeTotals } from '../systems/resources.js';
 import { getWarnings } from '../systems/warnings.js';
@@ -33,9 +33,10 @@ export default class HangarScene extends Phaser.Scene {
 
   create() {
     this.level = gameState.level;
+    const diff = getDifficulty();
     this.available = partsData.filter(p =>
-      p.unlockLevel <= gameState.levelId &&
-      (gameState.difficulty !== 'bedouin' || p.tier === 'basic'));
+      (diff.unlockAll || p.unlockLevel <= gameState.levelId) &&
+      (!diff.basicOnly || p.tier === 'basic'));
     this.placed = gameState.shipDesign ? [...gameState.shipDesign.parts] : [];
     this.selectedId = this.available[0] ? this.available[0].id : null;
     this.listPage = 0;
