@@ -17,8 +17,13 @@ export function getWarnings(totals, level, placedParts) {
   }
 
   if (totals.powerBalance < 0) {
-    warnings.push({ type: "power",
-      text: `Power is ${totals.powerBalance}. Your parts use more power than you make. Add a solar panel.` });
+    if (level.sunlight < 0.5) {
+      warnings.push({ type: "power",
+        text: `Power is ${totals.powerBalance}. Sunlight here is only ${Math.round(level.sunlight * 100)}% of Earth's, so solar panels make little power. Add batteries.` });
+    } else {
+      warnings.push({ type: "power",
+        text: `Power is ${totals.powerBalance}. Your parts use more power than you make. Add a solar panel.` });
+    }
   }
 
   if (totals.dataRate > totals.downlink) {
@@ -37,6 +42,5 @@ export function getWarnings(totals, level, placedParts) {
   return warnings;
 }
 
-// Tests (Mars level: budget 650, massLimit 350, needs antenna):
-// Good ship (mass 225, power +3, cost 440, has antenna) -> [] (no warnings)
-// Bad ship (mass 380, power -2, cost 700, no antenna) -> 5 warnings, first one: "Too heavy by 30 kg..."
+// Tests:
+// Jupiter ship with power -6.6 -> "Power is -6.6. Sunlight here is only 4% of Earth's... Add batteries."
