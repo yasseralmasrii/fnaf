@@ -45,7 +45,7 @@ function home() {
     <div class="grid g4 mt2">
       ${[['🎯', 'Choose a mission', 'Pick a problem to solve and set your goal.'],
          ['🛠️', 'Build a satellite', 'Every part has a cost. There is no perfect design.'],
-         ['🚀', 'Orbit and team vote', 'Pick an orbit type and a rocket. Then every role votes: GO or NO GO?'],
+         ['🚀', 'Orbit and team vote', 'Pick an orbit type and a rocket. Then every role votes: accept or deny?'],
          ['🕹️', 'Fly the mission', 'Take pictures, save power, send data home, dodge debris.']]
         .map(([e, t, s], i) => `<div class="card center"><div class="big-emoji">${e}</div><h3 class="mt">${i + 1}. ${t}</h3><div class="small">${s}</div></div>`).join('')}
     </div>
@@ -193,7 +193,7 @@ function build() {
           ${groups.map(g => `<div class="group-title">${g}</div>${available.filter(p => p.group === g).map(p => `
             <div class="part" data-add="${p.id}" title="${p.info}">
               <div class="e">${p.emoji}</div>
-              <div><div class="n">${p.name} <span class="chip">$${p.cost}M</span><span class="chip">${p.mass} kg</span></div>
+              <div><div class="n">${p.name} <span class="chip">$${p.cost}M</span><span class="chip">${p.mass} kg</span><span class="chip">⏱ ${p.dev} mo</span></div>
               <div class="i">${p.info}</div></div>
             </div>`).join('')}`).join('')}
         </div>
