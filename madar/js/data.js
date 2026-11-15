@@ -76,6 +76,8 @@ export const PARTS = [
     info: 'Sends data to ground stations. Slow.' },
   { id: 'hga',     name: 'High-Gain Dish', emoji: '🛰️', group: 'Comms', mass: 14, cost: 18, downlink: 24, sendUse: 6, tier: 'advanced', dev: 3,
     info: 'Sends data 3 times faster. Needed far from Earth.' },
+  { id: 'crypto',  name: 'Encryption Module', emoji: '🔐', group: 'Comms', mass: 3, cost: 7, secure: true, sendUse: 1, tier: 'basic', dev: 1,
+    info: 'Checks and encrypts every command and every data packet. Blocks hackers who send fake commands. Uses a little power when sending.' },
   { id: 'memory',  name: 'Memory Bank',  emoji: '💾', group: 'Comms', mass: 3,  cost: 4,  memory: 60, tier: 'basic', dev: 1,
     info: 'Holds more data until you can send it.' },
   // Protection and control
@@ -154,6 +156,7 @@ export const ROLES = [
 export const LESSONS = {
   blurry: '🎡 No reaction wheels! The satellite cannot point steadily, so pictures come out blurry (less science).',
   outOfReach: '🚫 This target is too far north or south. Your equatorial orbit never flies over it! A polar orbit can see the whole planet.',
+  cyber: '☠️ Cyber attack! A hacker sent a FAKE command to your satellite. This is called spoofing. An Encryption Module checks every command and blocks fake ones, like NASA does with its real satellites.',
   shadow: '🌑 You entered the planet\'s shadow. Solar panels make no power here, so the battery keeps the satellite alive.',
   station: '📡 You are over a ground station! You can only send data when a station can "see" you.',
   memoryFull: '💾 Memory is full! New pictures are lost until you send data home.',

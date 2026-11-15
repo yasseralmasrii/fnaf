@@ -158,6 +158,8 @@ export function createMission({ missionId, partIds, alt, rocketId, difficultyId,
   const events = [];
   const debrisCount = Math.round((mission.debris ?? 2) * diff.events);
   for (let i = 0; i < debrisCount; i++) events.push({ type: 'debris', time: 10 + rng() * (totalTime - 20), done: false });
+  const cyberCount = Math.max(1, Math.round(1 * diff.events));
+  for (let i = 0; i < cyberCount; i++) events.push({ type: 'cyber', time: 20 + rng() * (totalTime - 40), done: false });
   const flareCount = Math.round(1 * diff.events);
   for (let i = 0; i < flareCount; i++) events.push({ type: 'flare', time: 15 + rng() * (totalTime - 30), done: false });
   events.sort((a, b) => a.time - b.time);
@@ -174,10 +176,10 @@ export function createMission({ missionId, partIds, alt, rocketId, difficultyId,
     memoryMax: t.memory, packets: [], sentScience: 0, sentData: 0,
     fuel: t.fuel, armor: t.armor,
     parts, targets, stations, events,
-    powerSave: false, flare: null, debris: null,
+    powerSave: false, flare: null, debris: null, cyberShow: null,
     satAngle: 0, planetAngle: 0, inShadow: false, overStation: false, targetInView: null,
     log: { shadowTime: 0, blackoutTime: 0, memoryLost: 0, wastedShots: 0, noPowerShots: 0, missedTargets: 0,
-      dodged: 0, debrisHits: 0, blurryShots: 0, flareDamage: 0, radiationHits: 0, partsLost: [], sendAttemptsNoStation: 0, firstBlackout: null },
+      dodged: 0, debrisHits: 0, blurryShots: 0, cyberBlocked: 0, cyberHits: 0, cyberLostData: 0, cyberKinds: [], flareDamage: 0, radiationHits: 0, partsLost: [], sendAttemptsNoStation: 0, firstBlackout: null },
     lessonsSeen: {},
   };
 }
@@ -187,7 +189,7 @@ function aliveParts(state) { return state.parts.filter(p => p.alive).map(p => pa
 
 // Which part breaks first. Parts that stick out (solar panels, antennas) get hit by debris first.
 const HIT_ORDER = {
-  debris: ['solar', 'bigsolar', 'antenna', 'hga', 'radar', 'thermal', 'battery', 'camera', 'hdcamera', 'memory', 'wheels', 'thruster', 'computer', 'rtg'],
+  debris: ['solar', 'bigsolar', 'antenna', 'hga', 'radar', 'thermal', 'battery', 'camera', 'hdcamera', 'memory', 'crypto', 'wheels', 'thruster', 'computer', 'rtg'],
   electronics: ['computer', 'thermal', 'radar', 'camera', 'hdcamera', 'antenna', 'hga'],
 };
 
@@ -316,6 +318,32 @@ export function step(state, dt, input = {}) {
       state.debris = { ev, until: state.time + 3 };
       lesson('debris', null);
     }
+    if (ev.type === 'cyber' && state.time >= ev.time) {
+      ev.done = true;
+      lesson('cyber', null);
+      const secure = parts.some(p => p.secure);
+      const wipe = state.rng() < 0.5;
+      if (secure) {
+        state.log.cyberBlocked++;
+        state.cyberShow = { until: state.time + 2.5, blocked: true };
+        out.push({ kind: 'good', text: '🔐 Encryption blocked a fake command from a hacker!' });
+      } else {
+        state.log.cyberHits++;
+        state.cyberShow = { until: state.time + 2.5, blocked: false };
+        if (wipe && state.packets.length) {
+          const gone = state.packets.splice(-2); // the newest pictures are deleted
+          const lost = gone.length;
+          state.log.cyberLostData += lost;
+          state.log.cyberKinds.push('wipe');
+          for (const pk of gone) { const tg = state.targets.find(x => x.id === pk.target); if (tg) tg.state = 'missed'; }
+          out.push({ kind: 'bad', text: `☠️ Hacked! A fake command deleted ${lost} picture(s) from memory.` });
+        } else {
+          state.log.cyberKinds.push('drain');
+          state.battery = Math.min(state.battery, state.batteryMax * 0.1);
+          out.push({ kind: 'bad', text: '☠️ Hacked! A fake command turned everything on and drained the battery.' });
+        }
+      }
+    }
     if (ev.type === 'flare' && !state.flare && state.time >= ev.time) {
       state.flare = { ev, until: state.time + 6 };
       lesson('flare', null);
@@ -331,6 +359,7 @@ export function step(state, dt, input = {}) {
       else { const lost = damagePart(state, 'debris', 'debris'); out.push({ kind: 'bad', text: lost ? `☄️ Debris hit! Lost: ${partById(lost).name}` : '☄️ Debris hit!' }); }
     }
   }
+  if (state.cyberShow && state.time >= state.cyberShow.until) state.cyberShow = null;
   if (state.flare && state.time >= state.flare.until) {
     state.flare.ev.done = true;
     if (!state.powerSave && state.rng() < 0.6) {
@@ -437,6 +466,8 @@ export function explain(result, config) {
   if (l.missedTargets > 0) lines.push(`${l.missedTargets} target(s) were missed. ${m.targetType === 'disaster' ? 'Disasters do not wait: react fast!' : 'Watch for targets passing under your orbit.'}`);
   const unreachable = (config.orbitType === 'equatorial') ? createMission(config).targets.filter(t => !t.reach).length : 0;
   if (unreachable > 0) lines.push(`${unreachable} target(s) were too far north or south: an equatorial orbit never flies over them. A polar orbit sees the whole planet.`);
+  if (l.cyberHits > 0) lines.push(`A hacker attacked ${l.cyberHits} time(s) with fake commands (spoofing)${l.cyberLostData ? ` and deleted ${l.cyberLostData} picture(s)` : ''}. An Encryption Module would have blocked it.`);
+  if (l.cyberBlocked > 0) lines.push(`Your Encryption Module blocked ${l.cyberBlocked} cyber attack(s). Security paid off!`);
   if (l.blurryShots > 0) lines.push(`${l.blurryShots} picture(s) were blurry because there were no working reaction wheels to point the satellite. Blurry pictures give ${Math.round((1 - BLURRY) * 100)}% less science.`);
   const chk = checkDesign({ mission: m, partIds: config.partIds, rocketId: config.rocketId, alt: config.alt, difficultyId: config.difficultyId, orbitType: config.orbitType });
   if (chk.lateMonths > 0) lines.push(`Building took ${chk.totals.devMonths} months, ${chk.lateMonths} past the deadline. That cost $${chk.lateCost}M that could have paid for more orbits.`);
@@ -459,6 +490,7 @@ export function whatIf(config) {
     { label: 'a Shield', partIds: [...config.partIds, 'shield'] },
     { label: 'a Thermal Sensor', partIds: [...config.partIds, 'thermal'] },
     { label: 'Reaction Wheels', partIds: [...config.partIds, 'wheels'] },
+    { label: 'an Encryption Module', partIds: [...config.partIds, 'crypto'] },
     ...orbitTypesFor(missionById(config.missionId).planet).filter(o => o.id !== config.orbitType).map(o => ({ label: `a ${o.name} orbit`, orbitType: o.id })),
     { label: 'a higher orbit (+200 km)', alt: Math.min(config.alt + 200 * (config.missionId === 'jupiter' ? 50 : 1), missionById(config.missionId).altMax) },
   ];

@@ -145,6 +145,12 @@ export function startOps(root, config, players, onEnd) {
       ctx.fillStyle = '#fde047'; ctx.font = 'bold 44px sans-serif'; ctx.textAlign = 'center';
       ctx.fillText(`☀️ SOLAR FLARE! Safe mode (E)? ${Math.ceil(s.flare.until - s.time)}s`, cx, H - 50);
     }
+    // Cyber attack
+    if (s.cyberShow) {
+      ctx.fillStyle = s.cyberShow.blocked ? 'rgba(74,222,128,.15)' : 'rgba(239,68,68,.22)'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = s.cyberShow.blocked ? '#4ade80' : '#f87171'; ctx.font = 'bold 44px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(s.cyberShow.blocked ? '🔐 FAKE COMMAND BLOCKED!' : '☠️ CYBER ATTACK! FAKE COMMAND!', cx, H - 120);
+    }
     // Labels
     ctx.fillStyle = '#fff'; ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'left';
     ctx.fillText(`${planet.name} · ${s.alt.toLocaleString()} km`, 24, 44);
