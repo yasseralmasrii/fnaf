@@ -301,7 +301,7 @@ function launch() {
         <div class="small">Left for operations: <b>$${Math.max(0, chk.opsMoney)}M</b> → ${chk.opsOrbits} orbits (mission needs ${m.orbits})</div>
         ${warningsHtml(chk.warnings.filter(w => w.level !== 'tip'))}
       </div>
-      <button class="btn green" id="go" ${chk.ok ? '' : 'disabled'}>👥 Team vote: accept or deny →</button>`;
+      <button class="btn green" id="go" ${chk.ok ? '' : 'disabled'}>${G.players === 1 ? '📋 Launch review →' : '👥 Team vote: accept or deny →'}</button>`;
   };
   const refreshSide = () => {
     $('#launchSide').innerHTML = sideHtml();
@@ -389,22 +389,26 @@ function council() {
   const who = ROLE_PLAYERS[G.players] || ROLE_PLAYERS[1];
   const demands = councilDemands(currentConfig());
   const met = demands.filter(d => d.met).length;
+  const solo = G.players === 1; // one player: no vote, just the checklist
   const draw = () => {
     const accepts = ROLES.filter(r => G.votes[r.id] === 'go').length;
     const voted = ROLES.filter(r => G.votes[r.id]).length;
     render(`
-      <div class="row spread"><div><div class="screen-title">👥 Team council: accept or deny the launch?</div>
-        <div class="screen-sub">Before a real launch, every team leader must say if the spacecraft is ready. Now it is your turn.</div></div>
+      <div class="row spread"><div><div class="screen-title">${solo ? '📋 Launch review: is your satellite ready?' : '👥 Team council: accept or deny the launch?'}</div>
+        <div class="screen-sub">${solo ? 'Before a real launch, each team leader checks one part of the spacecraft. Here is what each of them thinks.' : 'Before a real launch, every team leader must say if the spacecraft is ready. Now it is your turn.'}</div></div>
         <div class="row"><button class="btn secondary small" id="toBuild">← Change design</button><button class="btn secondary small" id="toLaunch">← Change orbit</button></div></div>
 
-      <div class="card mt">
+      ${solo ? `<div class="card mt">
+        <h3>❓ What is this?</h3>
+        <div class="small">Each role checks one thing. 😊 <b>Happy</b> = it is done, and you get <b>+30 points</b>. 😟 <b>Worried</b> = something is missing, and the card tells you the risk. You can go back and fix it, or launch anyway.</div>
+      </div>` : `<div class="card mt">
         <h3>❓ How does the vote work?</h3>
         <div class="grid g3 mt">
           <div><b>1. Each role checks one thing.</b><div class="small">Read the card: it says what this role needs and what goes wrong without it.</div></div>
           <div><b>2. ✅ Accept or ✋ Deny.</b><div class="small">Accept = "I am OK to launch like this." Deny = "Something important is missing, let's change the design first."</div></div>
           <div><b>3. 3 Accepts = launch.</b><div class="small">Every 😊 happy role adds <b>+30 points</b> to your score. A 😟 worried role means a risk in the mission.</div></div>
         </div>
-      </div>
+      </div>`}
 
       <div class="grid g4 mt">
         ${demands.map(d => {
@@ -415,21 +419,21 @@ function council() {
             <h3 class="mt">${r.name}${G.players > 1 ? ` · Player ${who[r.id]}` : ''}</h3>
             <div class="mt">${d.wants}</div>
             <div class="small mt">${d.met ? `✅ Done. ${d.why}` : `⚠️ ${d.risk}`}</div>
-            <div class="row mt">
+            ${solo ? '' : `<div class="row mt">
               <button class="toggle vote-go ${v === 'go' ? 'on' : ''}" data-vote="${r.id}:go">✅ Accept</button>
               <button class="toggle vote-nogo ${v === 'nogo' ? 'on' : ''}" data-vote="${r.id}:nogo">✋ Deny</button>
-            </div>
+            </div>`}
           </div>`;
         }).join('')}
       </div>
 
-      <div class="grid g3 mt">
+      <div class="grid ${solo ? 'g2' : 'g3'} mt">
         ${statCard('s-science', 'Happy roles', `${met} / 4  (+${met * 30} points)`, met / 4)}
-        ${statCard('s-money', 'Accept votes', `${accepts} / 4 (need 3)`, accepts / 4)}
-        ${statCard('s-target', 'Votes cast', `${voted} / 4`, voted / 4)}
+        ${solo ? statCard('s-target', 'Worried roles', `${4 - met}`) : `${statCard('s-money', 'Accept votes', `${accepts} / 4 (need 3)`, accepts / 4)}
+        ${statCard('s-target', 'Votes cast', `${voted} / 4`, voted / 4)}`}
       </div>
-      <div class="small mt">💡 ${met < 4 ? 'Worried roles? Press "Change design" and try to make them happy without going over budget. Or accept the risk as a team.' : 'Everyone is happy. Great teamwork!'}</div>
-      <div class="row mt2" style="justify-content:flex-end"><button class="btn green" id="launch" ${accepts >= 3 ? '' : 'disabled'}>🔥 LAUNCH!</button></div>
+      <div class="small mt">💡 ${met < 4 ? (solo ? 'Worried roles? Press "Change design" to fix them, or launch and take the risk.' : 'Worried roles? Press "Change design" and try to make them happy without going over budget. Or accept the risk as a team.') : 'Everyone is happy. Great teamwork!'}</div>
+      <div class="row mt2" style="justify-content:flex-end"><button class="btn green" id="launch" ${solo || accepts >= 3 ? '' : 'disabled'}>🔥 LAUNCH!</button></div>
     `);
     $('#toBuild').onclick = build;
     $('#toLaunch').onclick = launch;
