@@ -209,7 +209,10 @@ body.trace:has(.parts-col, #ops) .ico { filter: none; }
 .poem .verse { font-family: "Amiri", var(--display); font-size: clamp(28px, 3.4vw, 48px); line-height: 1.9; color: #ffe9b8;
   text-shadow: 0 0 26px rgba(240,169,59,.35); opacity: 0; animation: verseIn 1.4s ease forwards; }
 .poem .verse.pair { display: flex; gap: 3.5em; flex-wrap: wrap; justify-content: center; }
-.poem .poet { font-family: var(--display); font-size: 22px; color: var(--turq); letter-spacing: 1px; opacity: 0; animation: verseIn 1s ease forwards; }
+.poem .trans { direction: ltr; max-width: 760px; font-family: "Cairo", sans-serif; font-style: italic; font-size: clamp(16px, 1.5vw, 21px); line-height: 1.6;
+  color: rgba(255,233,184,.62); margin-top: -8px; opacity: 0; animation: transIn 1.2s ease forwards; }
+@keyframes transIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.poem .poet { font-family: var(--display); font-size: 22px; color: #f0c45a; text-shadow: 0 0 14px rgba(240,169,59,.55); letter-spacing: 1px; opacity: 0; animation: verseIn 1s ease forwards; }
 .poem .poet::before { content: "✦  "; } .poem .poet::after { content: "  ✦"; }
 .poem .hint { position: absolute; bottom: 7vh; font-size: 15px; color: rgba(246,234,210,.6); opacity: 0; animation: verseIn 1s ease forwards; }
 .poem.out { animation: poemOut .6s ease forwards; }
