@@ -170,7 +170,7 @@ export function startOps(root, config, players, onEnd) {
       statCard('s-fuel', '⛽ Dodges', h.fuel) +
       statCard(`s-money ${h.budget < 15 ? 'alarm' : ''}`, '💰 Budget', `$${h.budget}M`);
     $('#lesson').textContent = lastLesson;
-    $('#parts').innerHTML = '<b>🛰️ Satellite parts</b><br>' + s.parts.map(p => `${partById(p.id).emoji} ${p.alive ? partById(p.id).name : `<s>${partById(p.id).name}</s> 💥`}`).join('<br>');
+    $('#parts').innerHTML = '<b>🛰️ Satellite parts</b><br>' + s.parts.map(p => `${partById(p.id).emoji} ${p.alive ? partById(p.id).name : `<s>${partById(p.id).name}</s> 💥`} <span style="opacity:.6">${partById(p.id).mass} kg</span>`).join('<br>');
     $('#b-send').classList.toggle('flash', s.overStation && s.packets.length > 0);
     $('#b-cap').classList.toggle('flash', Boolean(s.targetInView));
     $('#b-dodge').classList.toggle('flash', Boolean(s.debris));

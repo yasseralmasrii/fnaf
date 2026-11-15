@@ -131,10 +131,10 @@ function contract() {
       <div class="grid g2 mt">
         <div class="card">
           <h3>📜 Mission requirement</h3>
-          <div class="mt" style="font-size:20px">"Our satellite will deliver <b style="font-size:30px">${G.promise}</b> of ${m.targetCount} ${m.targetEmoji} ${m.targetType === 'disaster' ? 'alerts' : 'scans'} to Earth."</div>
+          <div class="mt" style="font-size:20px">"Our satellite will deliver <b style="font-size:30px" id="promiseNum">${G.promise}</b> of ${m.targetCount} ${m.targetEmoji} ${m.targetType === 'disaster' ? 'alerts' : 'scans'} to Earth."</div>
           <input type="range" id="promise" min="${min}" max="${m.targetCount}" value="${G.promise}" class="mt" />
           <div class="small mt">A bigger promise gives more points if you make it, but you lose points if you fall short. Choose a goal your team can really reach.</div>
-          <div class="mt">Points if met: <b style="color:#16a34a">+${G.promise * 50}</b> · if missed: <b style="color:#dc2626">−${G.promise * 25}</b></div>
+          <div class="mt">Points if met: <b style="color:#16a34a" id="ptsMet">+${G.promise * 50}</b> · if missed: <b style="color:#dc2626" id="ptsMiss">−${G.promise * 25}</b></div>
         </div>
         <div class="card">
           <h3>📋 Mission constraints</h3>
@@ -153,7 +153,12 @@ function contract() {
       <div class="row mt2" style="justify-content:flex-end"><button class="btn" id="next">🛠️ Build the satellite →</button></div>
     `);
     $('#back').onclick = missions;
-    $('#promise').oninput = e => { G.promise = +e.target.value; draw(); };
+    $('#promise').oninput = e => {
+      G.promise = +e.target.value;
+      $('#promiseNum').textContent = G.promise;
+      $('#ptsMet').textContent = `+${G.promise * 50}`;
+      $('#ptsMiss').textContent = `−${G.promise * 25}`;
+    };
     $('#next').onclick = build;
   };
   draw();
@@ -173,6 +178,10 @@ function build() {
     const sunPower = Math.round((t.solar * planet.sunlight + t.rtg) * 10) / 10;
     const groups = [...new Set(available.map(p => p.group))];
     const n = G.partIds.length;
+    const keepList = document.querySelector('.parts-col') ? document.querySelector('.parts-col').scrollTop : 0;
+    const keepPage = window.scrollY;
+    const counts = {};
+    G.partIds.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
     render(`
       <div class="row spread"><div><div class="screen-title">🛠️ Build your satellite</div>
         <div class="screen-sub">Click a part to add it. Click it on the satellite to remove it. Watch every number change.</div></div>
@@ -200,6 +209,15 @@ function build() {
             <div class="drop-hint">${n}/${MAX_PARTS} parts</div>
           </div>
           <div class="mt">${warningsHtml(chk.warnings)}</div>
+          <div class="card mt">
+            <h3>📦 Equipment list</h3>
+            <table class="eq">
+              <tr><th>Part</th><th>Mass</th><th>Cost</th><th>Build time</th></tr>
+              <tr><td>🛰️ Core (frame, computer, small battery)</td><td>30 kg</td><td>$20M</td><td>6 mo</td></tr>
+              ${Object.entries(counts).map(([id, c]) => { const p = partById(id); return `<tr><td>${p.emoji} ${p.name}${c > 1 ? ` × ${c}` : ''}</td><td>${p.mass * c} kg</td><td>$${p.cost * c}M</td><td>${p.dev * c} mo</td></tr>`; }).join('')}
+              <tr class="total"><td>Total</td><td>${t.mass} kg</td><td>$${t.cost}M</td><td>${t.devMonths} mo</td></tr>
+            </table>
+          </div>
         </div>
 
         <div class="side-stack">
@@ -215,6 +233,8 @@ function build() {
         </div>
       </div>
     `);
+    $('.parts-col').scrollTop = keepList;
+    window.scrollTo(0, keepPage);
     $('#back').onclick = contract;
     $$('[data-add]').forEach(el => el.onclick = () => {
       if (G.partIds.length >= MAX_PARTS) { toast('The satellite is full!', 'bad'); return; }
@@ -247,112 +267,118 @@ function launch() {
   const planet = PLANETS[m.planet];
   if (!G.alt || G.alt < m.altMin || G.alt > m.altMax) G.alt = m.altStart;
   if (!G.rocketId) G.rocketId = 'medium';
+  if (!orbitTypesFor(m.planet).some(o => o.id === G.orbitType)) G.orbitType = 'polar';
   let raf = null;
+  const step = m.planet === 'jupiter' ? 1000 : 10;
+  const stop = () => cancelAnimationFrame(raf);
 
-  const draw = () => {
-    if (!orbitTypesFor(m.planet).some(o => o.id === G.orbitType)) G.orbitType = 'polar';
+  // The right side (numbers, rockets, budget) is redrawn on every change. The slider is never redrawn, so it drags smoothly.
+  const sideHtml = () => {
     const chk = checkDesign({ mission: m, partIds: G.partIds, rocketId: G.rocketId, alt: G.alt, difficultyId: G.difficultyId, orbitType: G.orbitType });
     const oi = orbitInfo(m.planet, G.alt, m, G.orbitType);
-    const step = m.planet === 'jupiter' ? 1000 : 10;
-    render(`
-      <div class="row spread"><div><div class="screen-title">🚀 Orbit and launch</div>
-        <div class="screen-sub">Drag the slider to move your orbit. Higher sees more but sharper pictures need lower orbits.</div></div>
-        <button class="btn secondary small" id="back">← Build</button></div>
-
-      <div class="grid mt" style="grid-template-columns: 1.2fr 1fr">
-        <div class="card dark">
-          <canvas id="orbitCanvas" width="640" height="420"></canvas>
-          <div class="row spread mt"><b>Altitude: <span style="font-size:24px">${G.alt.toLocaleString()} km</span></b><span class="small">${m.altMin.toLocaleString()} – ${m.altMax.toLocaleString()} km</span></div>
-          <input type="range" id="alt" min="${m.altMin}" max="${m.altMax}" step="${step}" value="${G.alt}" />
-          <h3 class="mt">🧭 Orbit type</h3>
-          <div class="grid g3 mt">${orbitTypesFor(m.planet).map(o => `
-            <div class="card pick ${G.orbitType === o.id ? 'selected' : ''}" data-ot="${o.id}" style="padding:12px">
-              <div style="font-size:26px">${o.emoji}</div><b>${o.name}</b>
-              <div class="small">${o.short}</div>
-              <div class="small mt" style="color:#16a34a">👍 ${o.good}</div>
-              <div class="small mt" style="color:#dc2626">👎 ${o.bad}</div>
-            </div>`).join('')}</div>
-        </div>
-        <div class="side-stack">
-          <div class="grid g2">
-            ${statCard('s-science', 'One orbit takes (real)', formatPeriod(oi.periodSec))}
-            ${statCard('s-power', 'Time in shadow', `${Math.round(oi.eclipse * 100)}%`)}
-            ${statCard('s-target', 'Picture sharpness', `${Math.round(oi.quality * 100)}%`)}
-            ${statCard('s-data', 'View width', `${oi.swathKm.toLocaleString()} km`)}
-            ${statCard(oi.decayOrbits < Infinity ? 's-fuel alarm' : 's-money', 'Orbit lifetime', oi.decayOrbits < Infinity ? `Falls after ${oi.decayOrbits} orbits!` : 'Stable')}
-            ${m.planet === 'jupiter' ? statCard(oi.radiation > 0.3 ? 's-fuel alarm' : 's-money', 'Radiation', `${Math.round(oi.radiation * 100)}%`) : statCard('s-mass', 'Planet', planet.name)}
-          </div>
-          <div class="grid g3">
-            ${ROCKETS.map(r => {
-              const cap = rocketCapacity(r, m, G.alt, G.orbitType);
-              const fits = chk.totals.mass <= cap;
-              return `<div class="card pick ${G.rocketId === r.id ? 'selected' : ''}" data-r="${r.id}" style="padding:12px">
-                <div class="big-emoji" style="font-size:34px">${r.emoji}</div><b>${r.name}</b>
-                <div class="small">$${r.cost}M</div><div class="small">Carries ${cap} kg</div>
-                <div style="font-weight:800;color:${fits ? '#16a34a' : '#dc2626'}">${fits ? '✓ fits' : '✗ too heavy'}</div></div>`;
-            }).join('')}
-          </div>
-          <div class="card">
-            <h3>💰 Budget plan</h3>
-            <div class="small">Satellite $${chk.totals.cost}M + Rocket $${ROCKETS.find(r => r.id === G.rocketId).cost}M${chk.lateCost ? ` + Late $${chk.lateCost}M` : ''} = <b>$${chk.buildCost}M</b> of $${chk.budget}M</div>
-            <div class="small">Left for operations: <b>$${Math.max(0, chk.opsMoney)}M</b> → ${chk.opsOrbits} orbits (mission needs ${m.orbits})</div>
-            ${warningsHtml(chk.warnings.filter(w => w.level !== 'tip'))}
-          </div>
-          <button class="btn green" id="go" ${chk.ok ? '' : 'disabled'}>👥 Team vote: GO / NO GO →</button>
-        </div>
+    return `
+      <div class="grid g2">
+        ${statCard('s-science', 'One orbit takes (real)', formatPeriod(oi.periodSec))}
+        ${statCard('s-power', 'Time in shadow', `${Math.round(oi.eclipse * 100)}%`)}
+        ${statCard('s-target', 'Picture sharpness', `${Math.round(oi.quality * 100)}%`)}
+        ${statCard('s-data', 'View width', `${oi.swathKm.toLocaleString()} km`)}
+        ${statCard(oi.decayOrbits < Infinity ? 's-fuel alarm' : 's-money', 'Orbit lifetime', oi.decayOrbits < Infinity ? `Falls after ${oi.decayOrbits} orbits!` : 'Stable')}
+        ${m.planet === 'jupiter' ? statCard(oi.radiation > 0.3 ? 's-fuel alarm' : 's-money', 'Radiation', `${Math.round(oi.radiation * 100)}%`) : statCard('s-mass', 'Satellite mass', `${chk.totals.mass} kg`)}
       </div>
-    `);
-    $('#back').onclick = () => { cancelAnimationFrame(raf); build(); };
-    $('#alt').oninput = e => { G.alt = +e.target.value; cancelAnimationFrame(raf); draw(); };
-    $$('[data-r]').forEach(el => el.onclick = () => { G.rocketId = el.dataset.r; cancelAnimationFrame(raf); draw(); });
-    $$('[data-ot]').forEach(el => el.onclick = () => { G.orbitType = el.dataset.ot; cancelAnimationFrame(raf); draw(); });
-    $('#go').onclick = () => { cancelAnimationFrame(raf); G.votes = {}; council(); };
-    animateOrbit(oi);
+      <div class="grid g3">
+        ${ROCKETS.map(r => {
+          const cap = rocketCapacity(r, m, G.alt, G.orbitType);
+          const fits = chk.totals.mass <= cap;
+          return `<div class="card pick ${G.rocketId === r.id ? 'selected' : ''}" data-r="${r.id}" style="padding:12px">
+            <div class="big-emoji" style="font-size:34px">${r.emoji}</div><b>${r.name}</b>
+            <div class="small">$${r.cost}M</div><div class="small">Carries ${cap} kg</div>
+            <div style="font-weight:800;color:${fits ? '#16a34a' : '#dc2626'}">${fits ? '✓ fits' : '✗ too heavy'}</div></div>`;
+        }).join('')}
+      </div>
+      <div class="card">
+        <h3>💰 Budget plan</h3>
+        <div class="small">Satellite $${chk.totals.cost}M + Rocket $${ROCKETS.find(r => r.id === G.rocketId).cost}M${chk.lateCost ? ` + Late $${chk.lateCost}M` : ''} = <b>$${chk.buildCost}M</b> of $${chk.budget}M</div>
+        <div class="small">Left for operations: <b>$${Math.max(0, chk.opsMoney)}M</b> → ${chk.opsOrbits} orbits (mission needs ${m.orbits})</div>
+        ${warningsHtml(chk.warnings.filter(w => w.level !== 'tip'))}
+      </div>
+      <button class="btn green" id="go" ${chk.ok ? '' : 'disabled'}>👥 Team vote: accept or deny →</button>`;
+  };
+  const refreshSide = () => {
+    $('#launchSide').innerHTML = sideHtml();
+    $('#altLabel').textContent = `${G.alt.toLocaleString()} km`;
+    $$('[data-r]').forEach(el => el.onclick = () => { G.rocketId = el.dataset.r; refreshSide(); });
+    $('#go').onclick = () => { stop(); G.votes = {}; council(); };
   };
 
-  const animateOrbit = (oi) => {
-    const cv = $('#orbitCanvas');
-    const ctx = cv.getContext('2d');
-    const cx = 290, cy = 210, R = 90;
+  render(`
+    <div class="row spread"><div><div class="screen-title">🚀 Orbit and launch</div>
+      <div class="screen-sub">Drag the slider to move your orbit. Higher sees more, but sharper pictures need lower orbits.</div></div>
+      <button class="btn secondary small" id="back">← Build</button></div>
+
+    <div class="grid mt" style="grid-template-columns: 1.2fr 1fr">
+      <div class="card dark">
+        <canvas id="orbitCanvas" width="640" height="420"></canvas>
+        <div class="row spread mt"><b>Altitude: <span style="font-size:24px" id="altLabel">${G.alt.toLocaleString()} km</span></b><span class="small">${m.altMin.toLocaleString()} – ${m.altMax.toLocaleString()} km</span></div>
+        <input type="range" id="alt" min="${m.altMin}" max="${m.altMax}" step="${step}" value="${G.alt}" />
+        <h3 class="mt">🧭 Orbit type</h3>
+        <div class="grid g3 mt">${orbitTypesFor(m.planet).map(o => `
+          <div class="card pick ${G.orbitType === o.id ? 'selected' : ''}" data-ot="${o.id}" style="padding:12px">
+            <div style="font-size:26px">${o.emoji}</div><b>${o.name}</b>
+            <div class="small">${o.short}</div>
+            <div class="small mt" style="color:#16a34a">👍 ${o.good}</div>
+            <div class="small mt" style="color:#dc2626">👎 ${o.bad}</div>
+          </div>`).join('')}</div>
+      </div>
+      <div class="side-stack" id="launchSide"></div>
+    </div>
+  `);
+  $('#back').onclick = () => { stop(); build(); };
+  $('#alt').oninput = e => { G.alt = +e.target.value; refreshSide(); };
+  $$('[data-ot]').forEach(el => el.onclick = () => {
+    G.orbitType = el.dataset.ot;
+    $$('[data-ot]').forEach(x => x.classList.toggle('selected', x.dataset.ot === G.orbitType));
+    refreshSide();
+  });
+  refreshSide();
+
+  // The orbit picture reads the current altitude and orbit type on every frame.
+  const cv = $('#orbitCanvas');
+  const ctx = cv.getContext('2d');
+  const cx = 290, cy = 210, R = 90;
+  const t0 = performance.now();
+  const frame = (now) => {
+    if (!document.body.contains(cv)) return;
+    const oi = orbitInfo(m.planet, G.alt, m, G.orbitType);
     const orbitR = R + 20 + 90 * (G.alt - m.altMin) / (m.altMax - m.altMin);
-    const t0 = performance.now();
-    const frame = (now) => {
-      const t = (now - t0) / 1000;
-      ctx.clearRect(0, 0, cv.width, cv.height);
-      // Sun
-      const g = ctx.createRadialGradient(640, 210, 10, 640, 210, 160);
-      g.addColorStop(0, 'rgba(253,224,71,.9)'); g.addColorStop(1, 'rgba(253,224,71,0)');
-      ctx.fillStyle = g; ctx.fillRect(480, 0, 160, 420);
-      ctx.fillStyle = '#fde047'; ctx.font = '28px sans-serif'; ctx.fillText('☀️', 590, 220);
-      // Shadow behind the planet
-      ctx.fillStyle = 'rgba(0,0,0,.45)';
-      ctx.fillRect(0, cy - R, cx, R * 2);
-      // Planet
-      ctx.fillStyle = planet.color; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = planet.land; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(cx + Math.cos(i * 1.7) * R * .5, cy + Math.sin(i * 2.1) * R * .5, R * .22, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI / 2, Math.PI * 1.5); ctx.fill();
-      // Orbit
-      ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(cx, cy, orbitR, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-      // Satellite + view cone
-      const a = -t * 0.8;
-      const sx = cx + Math.cos(a) * orbitR, sy = cy + Math.sin(a) * orbitR;
-      ctx.fillStyle = 'rgba(250,204,21,.35)'; ctx.beginPath(); ctx.moveTo(sx, sy);
-      ctx.lineTo(cx + Math.cos(a - oi.viewHalf) * R, cy + Math.sin(a - oi.viewHalf) * R);
-      ctx.lineTo(cx + Math.cos(a + oi.viewHalf) * R, cy + Math.sin(a + oi.viewHalf) * R); ctx.closePath(); ctx.fill();
-      ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🛰️', sx, sy);
-      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
-      ctx.fillText(`${planet.name} · ${orbitTypeById(G.orbitType).name} orbit`, 12, 24);
-      ctx.fillText('🌑 shadow side', 12, cy + 4);
-      raf = requestAnimationFrame(frame);
-    };
+    const t = (now - t0) / 1000;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    const g = ctx.createRadialGradient(640, 210, 10, 640, 210, 160);
+    g.addColorStop(0, 'rgba(253,224,71,.9)'); g.addColorStop(1, 'rgba(253,224,71,0)');
+    ctx.fillStyle = g; ctx.fillRect(480, 0, 160, 420);
+    ctx.fillStyle = '#fde047'; ctx.font = '28px sans-serif'; ctx.fillText('☀️', 590, 220);
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.fillRect(0, cy - R, cx, R * 2);
+    ctx.fillStyle = planet.color; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = planet.land; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(cx + Math.cos(i * 1.7) * R * .5, cy + Math.sin(i * 2.1) * R * .5, R * .22, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI / 2, Math.PI * 1.5); ctx.fill();
+    ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(cx, cy, orbitR, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    const a = -t * 0.8;
+    const sx = cx + Math.cos(a) * orbitR, sy = cy + Math.sin(a) * orbitR;
+    ctx.fillStyle = 'rgba(250,204,21,.35)'; ctx.beginPath(); ctx.moveTo(sx, sy);
+    ctx.lineTo(cx + Math.cos(a - oi.viewHalf) * R, cy + Math.sin(a - oi.viewHalf) * R);
+    ctx.lineTo(cx + Math.cos(a + oi.viewHalf) * R, cy + Math.sin(a + oi.viewHalf) * R); ctx.closePath(); ctx.fill();
+    ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🛰️', sx, sy);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(`${planet.name} · ${orbitTypeById(G.orbitType).name} orbit`, 12, 24);
+    ctx.fillText('🌑 shadow side', 12, cy + 4);
     raf = requestAnimationFrame(frame);
   };
-  draw();
+  raf = requestAnimationFrame(frame);
 }
 
-// ---------- 5b. Team council: GO / NO GO ----------
-// Each role wants something different. The team talks, then votes. Real missions do this
+// ---------- 5b. Team council: accept or deny the launch ----------
+// Each role checks one part of the design. The team talks, then votes. Real missions do this
 // in a "Flight Readiness Review" before every launch.
 
 function currentConfig() {
@@ -360,17 +386,25 @@ function currentConfig() {
 }
 
 function council() {
-  const m = missionById(G.missionId);
   const who = ROLE_PLAYERS[G.players] || ROLE_PLAYERS[1];
   const demands = councilDemands(currentConfig());
   const met = demands.filter(d => d.met).length;
   const draw = () => {
-    const goVotes = ROLES.filter(r => G.votes[r.id] === 'go').length;
+    const accepts = ROLES.filter(r => G.votes[r.id] === 'go').length;
     const voted = ROLES.filter(r => G.votes[r.id]).length;
     render(`
-      <div class="row spread"><div><div class="screen-title">👥 Team council: GO or NO GO?</div>
-        <div class="screen-sub">Each role wants something different, and the money cannot buy everything. Talk, change the design if you need to, then vote. 3 GO votes are needed to launch.</div></div>
+      <div class="row spread"><div><div class="screen-title">👥 Team council: accept or deny the launch?</div>
+        <div class="screen-sub">Before a real launch, every team leader must say if the spacecraft is ready. Now it is your turn.</div></div>
         <div class="row"><button class="btn secondary small" id="toBuild">← Change design</button><button class="btn secondary small" id="toLaunch">← Change orbit</button></div></div>
+
+      <div class="card mt">
+        <h3>❓ How does the vote work?</h3>
+        <div class="grid g3 mt">
+          <div><b>1. Each role checks one thing.</b><div class="small">Read the card: it says what this role needs and what goes wrong without it.</div></div>
+          <div><b>2. ✅ Accept or ✋ Deny.</b><div class="small">Accept = "I am OK to launch like this." Deny = "Something important is missing, let's change the design first."</div></div>
+          <div><b>3. 3 Accepts = launch.</b><div class="small">Every 😊 happy role adds <b>+30 points</b> to your score. A 😟 worried role means a risk in the mission.</div></div>
+        </div>
+      </div>
 
       <div class="grid g4 mt">
         ${demands.map(d => {
@@ -380,10 +414,10 @@ function council() {
             <div class="row spread"><div class="big-emoji" style="font-size:38px">${r.emoji}</div><span class="badge ${d.met ? 'b-easy' : 'b-hard'}">${d.met ? '😊 happy' : '😟 worried'}</span></div>
             <h3 class="mt">${r.name}${G.players > 1 ? ` · Player ${who[r.id]}` : ''}</h3>
             <div class="mt">${d.wants}</div>
-            <div class="small mt">Why: ${d.why}</div>
+            <div class="small mt">${d.met ? `✅ Done. ${d.why}` : `⚠️ ${d.risk}`}</div>
             <div class="row mt">
-              <button class="toggle vote-go ${v === 'go' ? 'on' : ''}" data-vote="${r.id}:go">✅ GO</button>
-              <button class="toggle vote-nogo ${v === 'nogo' ? 'on' : ''}" data-vote="${r.id}:nogo">✋ NO GO</button>
+              <button class="toggle vote-go ${v === 'go' ? 'on' : ''}" data-vote="${r.id}:go">✅ Accept</button>
+              <button class="toggle vote-nogo ${v === 'nogo' ? 'on' : ''}" data-vote="${r.id}:nogo">✋ Deny</button>
             </div>
           </div>`;
         }).join('')}
@@ -391,21 +425,62 @@ function council() {
 
       <div class="grid g3 mt">
         ${statCard('s-science', 'Happy roles', `${met} / 4  (+${met * 30} points)`, met / 4)}
-        ${statCard('s-money', 'GO votes', `${goVotes} / 4`, goVotes / 4)}
+        ${statCard('s-money', 'Accept votes', `${accepts} / 4 (need 3)`, accepts / 4)}
         ${statCard('s-target', 'Votes cast', `${voted} / 4`, voted / 4)}
       </div>
-      <div class="small mt">💡 Every happy role gives +30 points. You can launch with a worried role, but you must agree as a team. ${met < 4 ? 'Can you change the design to make more roles happy without going over budget?' : 'Everyone is happy. Great teamwork!'}</div>
-      <div class="row mt2" style="justify-content:flex-end"><button class="btn green" id="launch" ${goVotes >= 3 ? '' : 'disabled'}>🔥 LAUNCH!</button></div>
+      <div class="small mt">💡 ${met < 4 ? 'Worried roles? Press "Change design" and try to make them happy without going over budget. Or accept the risk as a team.' : 'Everyone is happy. Great teamwork!'}</div>
+      <div class="row mt2" style="justify-content:flex-end"><button class="btn green" id="launch" ${accepts >= 3 ? '' : 'disabled'}>🔥 LAUNCH!</button></div>
     `);
     $('#toBuild').onclick = build;
     $('#toLaunch').onclick = launch;
     $$('[data-vote]').forEach(b => b.onclick = () => { const [role, v] = b.dataset.vote.split(':'); G.votes[role] = v; draw(); });
     $('#launch').onclick = () => {
-      G.council = { met, goVotes, demands: demands.map(d => ({ role: d.role, met: d.met })) };
-      countdown();
+      G.council = { met, goVotes: accepts, demands: demands.map(d => ({ role: d.role, met: d.met })) };
+      briefing();
     };
   };
   draw();
+}
+
+// ---------- 5c. Briefing: how to fly and how to win ----------
+
+function briefing() {
+  const m = missionById(G.missionId);
+  const who = ROLE_PLAYERS[G.players] || ROLE_PLAYERS[1];
+  const when = {
+    scientist: `When a ${m.targetEmoji} target is under the satellite (the cone turns green).`,
+    comms: 'Hold it when the satellite is near a 📡 ground station.',
+    engineer: 'When a ☀️ solar flare comes. Press again after it passes.',
+    pilot: 'When ☄️ "DEBRIS! PRESS W" appears. You have 3 seconds.',
+  };
+  render(`
+    <div class="center"><div class="screen-title">🎮 Mission briefing</div>
+      <div class="screen-sub">${m.emoji} ${m.name} · Goal: deliver at least <b>${G.promise}</b> of ${m.targetCount} targets to Earth</div></div>
+
+    <div class="grid g4 mt">
+      ${ROLES.map(r => `<div class="card center">
+        <div class="big-emoji">${r.emoji}</div>
+        <div class="key">${r.key}</div>
+        <h3 class="mt">${r.name}${G.players > 1 ? ` · Player ${who[r.id]}` : ''}</h3>
+        <div class="small mt"><b>${r.job}.</b></div>
+        <div class="small mt">${when[r.id]}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="card mt">
+      <h3>🏆 How to succeed</h3>
+      <div class="grid g2 mt">
+        <div>📸 <b>Picture → 📡 send.</b> A picture only counts when it reaches Earth (📦 becomes ✅).</div>
+        <div>🌑 <b>Watch the shadow.</b> Solar panels make no power on the dark side. Don't waste pictures there.</div>
+        <div>💾 <b>Watch the memory.</b> Send data often. When memory is full, new pictures are lost.</div>
+        <div>⚡ <b>Flashing button = press it now!</b> Talk to your team: "Target! Station! Debris!"</div>
+      </div>
+      <div class="small mt">☠️ Hackers may send a fake command during the mission. Only an 🔐 Encryption Module can block it. · The mission lasts ${m.orbits} orbits (about ${m.orbits * 20} seconds). Press P to pause.</div>
+    </div>
+
+    <div class="row mt2" style="justify-content:center"><button class="btn green" id="start">🚀 Start the mission</button></div>
+  `);
+  $('#start').onclick = countdown;
 }
 
 function countdown() {

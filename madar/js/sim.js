@@ -533,12 +533,12 @@ export function councilDemands(config) {
   const far = m.planet !== 'earth';
   return [
     { role: 'scientist', wants: `"I want the ${bonusName} for double science, and sharp pictures (reaction wheels)."`,
-      met: m.bonusNeeds.some(has) && t.hasWheels, why: 'More science per picture.' },
+      met: m.bonusNeeds.some(has) && t.hasWheels, why: 'More science per picture.', risk: 'Without it, every picture gives less science.' },
     { role: 'comms', wants: far ? '"We are far from Earth: I need a High-Gain Dish, or our data will be stuck on board."' : '"I need a Memory Bank, so we never lose pictures when memory is full."',
-      met: far ? has('hga') : has('memory'), why: 'Data only counts when it reaches Earth.' },
+      met: far ? has('hga') : has('memory'), why: 'Data only counts when it reaches Earth.', risk: far ? 'Without it, pictures may be stuck on board when the mission ends.' : 'Without it, new pictures are lost when the memory is full.' },
     { role: 'engineer', wants: `"The battery must survive the shadow: we need at least ${powerNeed} power stored. We have ${t.battery}."`,
-      met: t.battery >= powerNeed, why: 'No power = no science.' },
+      met: t.battery >= powerNeed, why: 'No power = no science.', risk: 'Without it, the satellite can run out of power in the shadow.' },
     { role: 'pilot', wants: m.planet === 'jupiter' ? '"Radiation is deadly here: I want a Shield, and money to fly every orbit."' : '"I want a Thruster or a Shield against debris, and money to fly every orbit."',
-      met: (m.planet === 'jupiter' ? has('shield') : (has('thruster') || has('shield'))) && chk.opsOrbits >= m.orbits, why: 'A safe satellite that lasts the whole mission.' },
+      met: (m.planet === 'jupiter' ? has('shield') : (has('thruster') || has('shield'))) && chk.opsOrbits >= m.orbits, why: 'A safe satellite that lasts the whole mission.', risk: 'Without it, debris can break parts, or the money runs out before the last orbit.' },
   ];
 }
