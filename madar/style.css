@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800;900&family=Reem+Kufi:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@500;700;800;900&family=Reem+Kufi:wght@500;700&display=swap');
 
 /* MADAR: Arabian desert night.
    Shapes: pointed-arch tops (mihrab windows) and a small diamond ornament on cards.
@@ -183,6 +183,37 @@ table.eq th { font-size: 12px; letter-spacing: .5px; padding: 6px 8px; border-bo
 table.eq td { padding: 6px 8px; border-bottom: 1px solid #e3cfa3; }
 table.eq tr.total td { font-weight: 900; border-bottom: none; }
 .key { display: inline-block; margin-top: 8px; padding: 6px 16px; border-radius: var(--arch-sm); background: linear-gradient(180deg, var(--gold1), var(--gold2)); border: 2px solid var(--edge); color: var(--btn-ink); font-weight: 900; font-size: 18px; letter-spacing: 1px; box-shadow: 0 3px 0 var(--ledge); }
+
+/* Crescent moon on the main page */
+body:has(.title) #stars::after {
+  content: ""; position: absolute; top: 5vh; right: 7vw; width: clamp(90px, 11vw, 160px); aspect-ratio: 1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cmask id='m'%3E%3Crect width='100' height='100' fill='white'/%3E%3Ccircle cx='63' cy='38' r='35' fill='black'/%3E%3C/mask%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3c4'/%3E%3Cstop offset='1' stop-color='%23f0a93b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='46' cy='52' r='38' fill='url(%23g)' mask='url(%23m)'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 0 18px rgba(255,214,120,.55)) drop-shadow(0 0 46px rgba(240,169,59,.35));
+  transform: rotate(-18deg);
+}
+
+/* Traced emojis: thin lines in the colour of the text (see TRACE_EMOJI in ui.js) */
+body.trace .ico { display: inline-block; filter: url(#tr-sand); }
+body.trace :is(.card:not(.dark), .btn, .toggle, .stat, .part, .lesson, .toast, .ctrl, .chip, .warn, .sat-part, .sat-core, .key) .ico { filter: url(#tr-ink); }
+body.trace :is(.screen-title, .grade, .countdown) .ico { filter: url(#tr-gold); }
+body.trace :is(.whatif, .nasa, .badge, .vote-go.on, .vote-nogo.on) .ico { filter: url(#tr-white); }
+body.trace .stars-big .ico { filter: none; } /* the reward stars stay gold */
+
+/* The poem page between the countdown and the mission */
+.poem { position: fixed; inset: 0; z-index: 65; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+  padding: 40px; direction: rtl; text-align: center; cursor: pointer;
+  background: radial-gradient(ellipse at center, rgba(38,23,79,.9), rgba(8,5,26,.97) 70%); backdrop-filter: blur(6px);
+  animation: poemIn .8s ease both; }
+.poem .verse { font-family: "Amiri", var(--display); font-size: clamp(28px, 3.4vw, 48px); line-height: 1.9; color: #ffe9b8;
+  text-shadow: 0 0 26px rgba(240,169,59,.35); opacity: 0; animation: verseIn 1.4s ease forwards; }
+.poem .verse.pair { display: flex; gap: 3.5em; flex-wrap: wrap; justify-content: center; }
+.poem .poet { font-family: var(--display); font-size: 22px; color: var(--turq); letter-spacing: 1px; opacity: 0; animation: verseIn 1s ease forwards; }
+.poem .poet::before { content: "✦  "; } .poem .poet::after { content: "  ✦"; }
+.poem .hint { position: absolute; bottom: 7vh; font-size: 15px; color: rgba(246,234,210,.6); opacity: 0; animation: verseIn 1s ease forwards; }
+.poem.out { animation: poemOut .6s ease forwards; }
+@keyframes poemIn { from { opacity: 0; } }
+@keyframes poemOut { to { opacity: 0; } }
+@keyframes verseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
 /* Smaller screens */
 @media (max-width: 900px) {
