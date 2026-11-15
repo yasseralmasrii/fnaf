@@ -198,6 +198,8 @@ body.trace :is(.card:not(.dark), .btn, .toggle, .stat, .part, .lesson, .toast, .
 body.trace :is(.screen-title, .grade, .countdown) .ico { filter: url(#tr-gold); }
 body.trace :is(.whatif, .nasa, .badge, .vote-go.on, .vote-nogo.on) .ico { filter: url(#tr-white); }
 body.trace .stars-big .ico { filter: none; } /* the reward stars stay gold */
+/* The build screen and the mission screen keep normal colour emojis */
+body.trace:has(.parts-col, #ops) .ico { filter: none; }
 
 /* The poem page between the countdown and the mission */
 .poem { position: fixed; inset: 0; z-index: 65; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
