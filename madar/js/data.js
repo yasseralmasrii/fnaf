@@ -159,7 +159,8 @@ export const POEM = {
   lines: [
     ['وَبَلدَةٍ يَرهَبُ الجَوّابُ دُلجَتَها', 'حَتّى تَراهُ عَلَيها يَبتَغي النُجُما'],
   ],
-  poet: 'الأعشى',
+  translation: 'Many a land whose night journey frightens even the bravest traveller, yet there you see him, crossing it and seeking the stars.',
+  poet: 'الأعشى · Al-A\'sha',
 };
 
 // Short lessons, shown the first time something happens.

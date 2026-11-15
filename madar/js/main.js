@@ -512,8 +512,9 @@ function poemPage(next) {
   box.innerHTML = POEM.lines.map((l, i) => Array.isArray(l)
       ? `<div class="verse pair" style="animation-delay:${0.5 + i * step}s"><span>${l[0]}</span><span>${l[1]}</span></div>`
       : `<div class="verse" style="animation-delay:${0.5 + i * step}s">${l}</div>`).join('')
-    + (POEM.poet ? `<div class="poet" style="animation-delay:${0.5 + POEM.lines.length * step}s">${POEM.poet}</div>` : '')
-    + `<div class="hint" style="animation-delay:${1.2 + POEM.lines.length * step}s">اضغط أي زر للانطلاق · Press any key to start the mission</div>`;
+    + (POEM.translation ? `<div class="trans" style="animation-delay:${0.5 + POEM.lines.length * step}s">${POEM.translation}</div>` : '')
+    + (POEM.poet ? `<div class="poet" style="animation-delay:${1.2 + POEM.lines.length * step}s">${POEM.poet}</div>` : '')
+    + `<div class="hint" style="animation-delay:${2 + POEM.lines.length * step}s">اضغط أي زر للانطلاق · Press any key to start the mission</div>`;
   document.body.appendChild(box);
   let done = false;
   const onKey = e => { e.preventDefault(); go(); };
