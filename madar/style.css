@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800;900&family=Reem+Kufi:wght@500;700&display=swap');
 
 /* MADAR: Arabian desert night. Indigo sky, amber and copper, turquoise accents, parchment cards. */
 :root {
@@ -112,7 +113,7 @@ input[type=range] { width: 100%; accent-color: var(--copper); }
 .warn.ok { background: #d9efcf; color: #2d5a1f; }
 
 /* Build screen */
-.parts-col { max-height: 560px; overflow-y: auto; padding-right: 4px; }
+.parts-col { max-height: max(560px, calc(100vh - 150px)); overflow-y: auto; padding-right: 4px; }
 .part { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--card); color: var(--ink); margin-bottom: 8px; cursor: pointer; transition: transform .1s; border: 1px solid #d6b574; }
 .part:hover { transform: translateX(4px); border-color: var(--copper); }
 .part .e { font-size: 28px; }
@@ -143,7 +144,7 @@ canvas { display: block; width: 100%; border-radius: 20px; background: transpare
 .side-stack { display: flex; flex-direction: column; gap: 10px; }
 
 /* Toasts */
-#toasts { position: fixed; bottom: 16px; right: 16px; z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; max-width: 380px; }
+#toasts { position: fixed; top: 16px; right: 16px; z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; max-width: 380px; }
 .toast { padding: 10px 18px; border-radius: 999px; font-weight: 800; color: var(--ink); background: var(--card); border: 1px solid #d6b574; box-shadow: 0 8px 20px rgba(0,0,0,.4); animation: toastIn .2s ease-out; }
 .toast.good { background: #c4ecc0; } .toast.bad { background: #f8c6bf; } .toast.warn { background: #fbe19a; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
@@ -160,6 +161,13 @@ th { font-size: 13px; text-transform: uppercase; color: var(--muted); }
 .countdown { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 170px; font-weight: 700; color: #ffd98a; text-shadow: 0 0 40px rgba(240,169,59,.7); z-index: 60; background: rgba(14,11,42,.72); }
 .modal-back { position: fixed; inset: 0; background: rgba(6,4,24,.65); display: flex; align-items: center; justify-content: center; z-index: 70; }
 .modal { max-width: 560px; width: 92%; }
+
+/* Equipment list and briefing */
+table.eq { margin-top: 8px; font-size: 14px; }
+table.eq th { font-size: 12px; letter-spacing: .5px; padding: 6px 8px; border-bottom: 2px solid #d6b574; }
+table.eq td { padding: 6px 8px; border-bottom: 1px solid #e3cfa3; }
+table.eq tr.total td { font-weight: 900; border-bottom: none; }
+.key { display: inline-block; margin-top: 8px; padding: 6px 16px; border-radius: 10px; background: var(--ink); color: var(--sand); font-weight: 900; font-size: 18px; letter-spacing: 1px; box-shadow: 0 3px 0 #7a3f17; }
 
 /* Smaller screens */
 @media (max-width: 900px) {
