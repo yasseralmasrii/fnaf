@@ -384,6 +384,16 @@ export function step(state, dt, input = {}) {
   // Operating costs
   state.budgetLeft -= (OPS_COST_PER_ORBIT / ORBIT_SECONDS) * dt;
 
+  // All targets done (sent home or missed) and nothing left on board: finish early and save the money.
+  const allDone = state.targets.every(t => t.state === 'sent' || t.state === 'missed' || !t.reach) && state.packets.length === 0;
+  if (allDone && !state.ended && state.time < state.endTime) {
+    state.ended = true;
+    for (const tg of state.targets) if (tg.state !== 'sent') tg.state = 'missed';
+    state.endReason = 'allDone';
+    state.log.savedOrbits = Math.floor((state.endTime - state.time) / ORBIT_SECONDS);
+    return out;
+  }
+
   // End of mission
   if (state.time >= state.endTime) {
     state.ended = true;
@@ -458,6 +468,7 @@ export function explain(result, config) {
   const l = result.log;
   const m = missionById(result.missionId);
   lines.push(`You sent ${result.sentTargets} of ${result.targetCount} ${m.targetType === 'disaster' ? 'alerts' : 'targets'} home and earned ${result.science} science.`);
+  if (result.endReason === 'allDone') lines.push(`Every target was finished early, so the mission ended early and saved money for operations. Finishing fast is good engineering!`);
   if (result.endReason === 'decay') lines.push(`Your orbit at ${result.alt} km was too low: air drag pulled the satellite down early. Higher orbits last longer.`);
   if (result.endReason === 'money') lines.push('The money for operations ran out, so the mission ended early. Every orbit costs money for ground stations and people.');
   if (result.onBoard > 0) lines.push(`${result.onBoard} picture(s) were still on board when the mission ended. Data only counts when it reaches Earth!`);

@@ -207,7 +207,7 @@ export function startOps(root, config, players, onEnd) {
       drawHud();
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
-      const reasonText = { complete: 'MISSION COMPLETE', decay: 'ORBIT DECAYED', money: 'OUT OF MONEY' }[s.endReason];
+      const reasonText = { complete: 'MISSION COMPLETE', allDone: 'ALL TARGETS DONE!', decay: 'ORBIT DECAYED', money: 'OUT OF MONEY' }[s.endReason];
       ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = '#fff'; ctx.font = 'bold 90px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(reasonText, W / 2, H / 2);
       const team = players > 1 ? ROLES.map(r => ({ ...r, player: who[r.id],
