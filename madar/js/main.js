@@ -7,6 +7,7 @@ import {
 } from './sim.js';
 import { render, toast, store, statCard, warningsHtml, modal, $, $$ } from './ui.js';
 import { startOps } from './ops.js';
+import { playOud, fadeOud } from './oud.js';
 
 const MAX_PARTS = 12;
 const MAJLIS_KEY = 'madar_majlis';
@@ -488,6 +489,7 @@ function briefing() {
 }
 
 function countdown() {
+  playOud(); // the oud starts with the launch
   const box = document.createElement('div');
   box.className = 'countdown';
   document.body.appendChild(box);
@@ -529,6 +531,7 @@ function poemPage(next) {
 // ---------- 6. Fly the mission ----------
 
 function fly() {
+  setTimeout(() => fadeOud(2.5), 4000); // let the phrase end, then fade it out
   G.config = currentConfig();
   startOps(document.getElementById('app'), G.config, G.players, (result, team) => {
     G.result = result; G.team = team;

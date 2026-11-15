@@ -157,9 +157,9 @@ export const ROLES = [
 // Leave lines empty ([]) to skip the poem page.
 export const POEM = {
   lines: [
-    ['إِذَا غَامَرْتَ فِي شَرَفٍ مَرُومٍ', 'فَلَا تَقْنَعْ بِمَا دُونَ النُّجُومِ'],
+    ['وَبَلدَةٍ يَرهَبُ الجَوّابُ دُلجَتَها', 'حَتّى تَراهُ عَلَيها يَبتَغي النُجُما'],
   ],
-  poet: 'المتنبي',
+  poet: 'الأعشى',
 };
 
 // Short lessons, shown the first time something happens.

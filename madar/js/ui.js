@@ -53,6 +53,8 @@ export function modal(html) {
 export const TRACE_EMOJI = true;
 const EMOJI_RE = /\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|\p{Emoji_Modifier})*/gu;
 const HAS_EMOJI = /\p{Extended_Pictographic}/u;
+// Screens that keep normal colour emojis: the build screen and the mission screen.
+const COLOR_CANVASES = ['ops'];
 
 // SVG filters: outline of the shape + the lines inside it, painted in one colour.
 function traceFilter(id, color, radius) {
@@ -102,7 +104,8 @@ if (TRACE_EMOJI && typeof document !== 'undefined') {
   const traceCache = new Map();
   CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
     text = String(text);
-    if (!HAS_EMOJI.test(text)) return fillText.call(this, text, x, y, maxWidth);
+    // The mission canvas keeps its normal colour emojis.
+    if (!HAS_EMOJI.test(text) || COLOR_CANVASES.includes(this.canvas.id)) return fillText.call(this, text, x, y, maxWidth);
     const words = text.replace(EMOJI_RE, '').trim();
     if (words) return fillText.call(this, words, x, y, maxWidth);
     // Filters are slow, so each traced emoji is drawn once into a small canvas and reused.
@@ -120,4 +123,31 @@ if (TRACE_EMOJI && typeof document !== 'undefined') {
     }
     this.drawImage(img, x - size * 1.5, y - size * 1.5);
   };
+}
+
+// ---------- Click sound ----------
+// A short retro "blip", made like the sfxr / jsfxr game sounds (a square wave that drops in pitch).
+// It is made with the Web Audio API, so no sound file is needed. Set CLICK_SOUND to false to turn it off.
+export const CLICK_SOUND = true;
+let audio = null;
+export function blip() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const now = audio.currentTime;
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(330, now + 0.07);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  } catch (e) { /* no sound on this browser */ }
+}
+if (CLICK_SOUND && typeof document !== 'undefined') {
+  document.addEventListener('click', e => {
+    if (e.target.closest('button, .pick, .part, .sat-part, .toggle')) blip();
+  }, true);
 }
