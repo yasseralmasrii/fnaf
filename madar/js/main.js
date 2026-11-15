@@ -1,5 +1,5 @@
 // MADAR: screens and game flow.
-import { MISSIONS, PARTS, ROCKETS, DIFFICULTIES, PLANETS, ROLES, ROLE_PLAYERS, OPS_COST_PER_ORBIT } from './data.js';
+import { MISSIONS, PARTS, ROCKETS, DIFFICULTIES, PLANETS, ROLES, ROLE_PLAYERS, OPS_COST_PER_ORBIT, POEM } from './data.js';
 import {
   missionById, partById, difficultyById, designTotals, checkDesign, orbitInfo, formatPeriod,
   rocketCapacity, grade, explain, whatIf, makeChallengeCode, readChallengeCode,
@@ -494,10 +494,36 @@ function countdown() {
   let n = 3;
   const tick = () => {
     box.textContent = n > 0 ? n : '🚀';
-    if (n < 0) { box.remove(); fly(); return; }
+    if (n < 0) { box.remove(); poemPage(fly); return; }
     n--; setTimeout(tick, 600);
   };
   tick();
+}
+
+// ---------- 5d. The poem: a quiet moment between the countdown and the mission ----------
+
+function poemPage(next) {
+  if (!POEM.lines.length) { next(); return; }
+  const step = 1.4;
+  const box = document.createElement('div');
+  box.className = 'poem';
+  box.innerHTML = POEM.lines.map((l, i) => Array.isArray(l)
+      ? `<div class="verse pair" style="animation-delay:${0.5 + i * step}s"><span>${l[0]}</span><span>${l[1]}</span></div>`
+      : `<div class="verse" style="animation-delay:${0.5 + i * step}s">${l}</div>`).join('')
+    + (POEM.poet ? `<div class="poet" style="animation-delay:${0.5 + POEM.lines.length * step}s">${POEM.poet}</div>` : '')
+    + `<div class="hint" style="animation-delay:${1.2 + POEM.lines.length * step}s">اضغط أي زر للانطلاق · Press any key to start the mission</div>`;
+  document.body.appendChild(box);
+  let done = false;
+  const onKey = e => { e.preventDefault(); go(); };
+  const go = () => {
+    if (done) return;
+    done = true;
+    window.removeEventListener('keydown', onKey);
+    box.classList.add('out');
+    setTimeout(() => { box.remove(); next(); }, 600);
+  };
+  setTimeout(() => { box.addEventListener('click', go); window.addEventListener('keydown', onKey); }, 900);
+  setTimeout(go, Math.max(9000, 3000 + POEM.lines.length * 2800));
 }
 
 // ---------- 6. Fly the mission ----------

@@ -152,6 +152,16 @@ export const ROLES = [
   { id: 'pilot',     name: 'Pilot',     emoji: '🧭', key: 'W',     job: 'Dodge space debris' },
 ];
 
+// The poem shown after the countdown, before the mission starts.
+// Each line is a string, or a pair [first half, second half] for a classic two-part verse.
+// Leave lines empty ([]) to skip the poem page.
+export const POEM = {
+  lines: [
+    ['إِذَا غَامَرْتَ فِي شَرَفٍ مَرُومٍ', 'فَلَا تَقْنَعْ بِمَا دُونَ النُّجُومِ'],
+  ],
+  poet: 'المتنبي',
+};
+
 // Short lessons, shown the first time something happens.
 export const LESSONS = {
   blurry: '🎡 No reaction wheels! The satellite cannot point steadily, so pictures come out blurry (less science).',
